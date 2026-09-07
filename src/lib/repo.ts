@@ -17,6 +17,7 @@ import type {
   Cliente,
   Empleado,
   Jornada,
+  MovimientoCaja,
   PagoEmpleado,
   UserProfile,
   PagoProyecto,
@@ -179,4 +180,25 @@ export async function listarClientes(): Promise<Cliente[]> {
 export async function listarAdministradores(): Promise<UserProfile[]> {
   const snap = await getDocs(query(col('users'), where('rol', 'in', ['admin', 'admin_supremo'])))
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UserProfile, 'id'>) }))
+}
+
+// ---------- Movimientos de caja (compra de materiales/herramientas, trabajos extra, etc.) ----------
+
+export async function crearMovimiento(data: Omit<MovimientoCaja, 'id' | 'createdAt'>) {
+  const ref = await addDoc(col('movimientos_caja'), { ...data, createdAt: new Date().toISOString() })
+  return ref.id
+}
+
+export async function actualizarMovimiento(id: string, data: Partial<MovimientoCaja>) {
+  await updateDoc(doc(db, 'movimientos_caja', id), data)
+}
+
+export async function eliminarMovimiento(id: string) {
+  await deleteDoc(doc(db, 'movimientos_caja', id))
+}
+
+export async function listarMovimientos(): Promise<MovimientoCaja[]> {
+  const snap = await getDocs(col('movimientos_caja'))
+  const movimientos = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MovimientoCaja, 'id'>) }))
+  return movimientos.sort((a, b) => compareDateStr(b.fecha, a.fecha))
 }

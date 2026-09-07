@@ -68,5 +68,10 @@ service cloud.firestore {
     match /clientes/{id} {
       allow read, write: if isAdmin();
     }
+
+    // ---- movimientos de caja (compra de materiales/herramientas, trabajos extra): 100% admin ----
+    match /movimientos_caja/{id} {
+      allow read, write: if isAdmin();
+    }
   }
 }

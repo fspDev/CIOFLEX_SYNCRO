@@ -11,6 +11,7 @@ import { CalendarioPage } from './features/calendario/CalendarioPage'
 import { MisHorasPage } from './features/empleado-portal/MisHorasPage'
 import { MisPagosPage } from './features/empleado-portal/MisPagosPage'
 import { AdministradoresPage } from './features/administradores/AdministradoresPage'
+import { MovimientosPage } from './features/movimientos/MovimientosPage'
 
 function App() {
   const init = useAuthStore((s) => s.init)
@@ -43,6 +44,7 @@ function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/empleados" element={<EmpleadosPage />} />
               <Route path="/proyectos" element={<ProyectosPage />} />
+              <Route path="/movimientos" element={<MovimientosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               {profile.rol === 'admin_supremo' && <Route path="/administradores" element={<AdministradoresPage />} />}

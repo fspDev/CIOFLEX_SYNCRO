@@ -1,11 +1,15 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { asset } from '../../lib/utils'
+import { onboardingVisto, marcarOnboardingVisto } from '../../lib/onboarding'
+import { OnboardingModal } from '../onboarding/OnboardingModal'
 
 const ADMIN_TABS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/empleados', label: 'Empleados' },
   { to: '/proyectos', label: 'Proyectos' },
+  { to: '/movimientos', label: 'Movimientos' },
   { to: '/calendario', label: 'Calendario' },
   { to: '/clientes', label: 'Clientes' },
 ]
@@ -27,6 +31,18 @@ export function AppLayout() {
   const profile = useAuthStore((s) => s.profile)
   const signOut = useAuthStore((s) => s.signOut)
   const tabs = profile?.rol === 'admin_supremo' ? ADMIN_SUPREMO_TABS : profile?.rol === 'admin' ? ADMIN_TABS : EMPLEADO_TABS
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    if (profile && !onboardingVisto(profile.id)) {
+      setShowOnboarding(true)
+    }
+  }, [profile])
+
+  function handleCloseOnboarding() {
+    if (profile) marcarOnboardingVisto(profile.id)
+    setShowOnboarding(false)
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg)]">
@@ -55,6 +71,9 @@ export function AppLayout() {
         <div className="hidden md:block mt-auto p-3 border-t border-[var(--border)]">
           <p className="text-sm font-medium truncate">{profile?.nombre}</p>
           <p className="text-xs text-[var(--text-muted)] mb-2 truncate">{ROL_LABEL[profile?.rol ?? '']}</p>
+          <button onClick={() => setShowOnboarding(true)} className="text-xs text-[var(--brand-400)] hover:underline block mb-1">
+            ¿Cómo empiezo?
+          </button>
           <button onClick={() => signOut()} className="text-xs text-red-400 hover:text-red-300">
             Cerrar sesión
           </button>
@@ -64,6 +83,8 @@ export function AppLayout() {
       <main className="flex-1 min-w-0 p-4 md:p-8">
         <Outlet />
       </main>
+
+      {profile && <OnboardingModal open={showOnboarding} onClose={handleCloseOnboarding} rol={profile.rol} />}
     </div>
   )
 }

@@ -45,6 +45,20 @@ export function ProyectosPage() {
       .sort((a, b) => compareDateStr(a.fechaEventoInicio ?? '9999', b.fechaEventoInicio ?? '9999'))
   }, [proyectos, filtroCliente, filtroEstadoComercial, busqueda])
 
+  const totales = useMemo(() => {
+    return filtrados.reduce(
+      (acc, p) => {
+        const balance = calcularBalanceProyecto(p, pagosPorProyecto[p.id] ?? [])
+        return {
+          presupuestado: acc.presupuestado + balance.presupuesto,
+          cobrado: acc.cobrado + balance.cobrado,
+          pendiente: acc.pendiente + balance.pendiente,
+        }
+      },
+      { presupuestado: 0, cobrado: 0, pendiente: 0 },
+    )
+  }, [filtrados, pagosPorProyecto])
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
@@ -53,6 +67,25 @@ export function ProyectosPage() {
           <p className="text-sm text-[var(--text-muted)]">Eventos, armados y balance comercial</p>
         </div>
         <Button onClick={() => setShowForm(true)}>+ Nuevo proyecto</Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <Card className="p-4">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Presupuestado</p>
+          <p className="text-xl font-semibold">{loading ? '…' : formatCurrency(totales.presupuestado)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Cobrado</p>
+          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+            {loading ? '…' : formatCurrency(totales.cobrado)}
+          </p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-[var(--text-muted)] mb-1">Pendiente de cobro</p>
+          <p className="text-xl font-semibold" style={{ color: totales.pendiente > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+            {loading ? '…' : formatCurrency(totales.pendiente)}
+          </p>
+        </Card>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">

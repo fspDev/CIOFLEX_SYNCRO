@@ -120,3 +120,29 @@ export type EstadoCronologico =
   | 'en_curso'
   | 'desarme'
   | 'finalizado'
+
+export type TipoMovimiento = 'ingreso' | 'egreso'
+
+export const CATEGORIAS_MOVIMIENTO = [
+  'Materiales',
+  'Herramientas',
+  'Trabajo extra',
+  'Alquiler',
+  'Transporte/Combustible',
+  'Otro',
+] as const
+
+export type CategoriaMovimiento = (typeof CATEGORIAS_MOVIMIENTO)[number]
+
+// Flujo de caja general de la empresa, no ligado a un empleado ni a un proyecto puntual:
+// compra de materiales/herramientas (egreso) o trabajos extra sueltos (ingreso).
+export interface MovimientoCaja {
+  id: string
+  tipo: TipoMovimiento
+  categoria: CategoriaMovimiento
+  descripcion: string
+  monto: number
+  fecha: string // 'YYYY-MM-DD'
+  formaPago: FormaPago
+  createdAt: string
+}

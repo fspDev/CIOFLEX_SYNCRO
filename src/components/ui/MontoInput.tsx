@@ -15,7 +15,7 @@ export function MontoInput({ value, onChange, placeholder }: Props) {
       <Input
         className="pl-7"
         inputMode="numeric"
-        placeholder={placeholder ?? '0'}
+        placeholder={placeholder ?? 'Ingresá un monto'}
         value={value ? formatThousands(value) : ''}
         onChange={(e) => onChange(parseThousands(e.target.value))}
       />
