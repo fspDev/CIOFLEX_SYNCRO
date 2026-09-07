@@ -36,7 +36,9 @@ async function requireCallerRol(request, allowedRoles, mensaje) {
 exports.crearAccesoEmpleado = onCall(async (request) => {
   await requireCallerRol(request, ['admin', 'admin_supremo'], 'Solo un administrador puede generar accesos.')
 
-  const { empleadoId, usuario, password } = request.data || {}
+  const { empleadoId } = request.data || {}
+  const usuario = (request.data?.usuario || '').trim()
+  const password = (request.data?.password || '').trim()
   if (!empleadoId || !usuario || !password) {
     throw new HttpsError('invalid-argument', 'Faltan datos: empleadoId, usuario y password son requeridos.')
   }
@@ -79,7 +81,10 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
 exports.crearAccesoAdmin = onCall(async (request) => {
   await requireCallerRol(request, ['admin_supremo'], 'Solo el admin supremo puede gestionar cuentas de administrador.')
 
-  const { uid, nombre, email, password } = request.data || {}
+  const { uid } = request.data || {}
+  const nombre = (request.data?.nombre || '').trim()
+  const email = (request.data?.email || '').trim()
+  const password = (request.data?.password || '').trim()
   if (!nombre || !email) {
     throw new HttpsError('invalid-argument', 'Faltan datos: nombre y email son requeridos.')
   }

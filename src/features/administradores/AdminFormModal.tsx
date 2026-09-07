@@ -26,7 +26,9 @@ export function AdminFormModal({ open, onClose, onSaved, admin }: Props) {
     setError(null)
     try {
       const crearAccesoAdmin = httpsCallable(functions, 'crearAccesoAdmin')
-      await crearAccesoAdmin({ uid: admin?.id, nombre, email, password: password || undefined })
+      // Recortamos espacios invisibles (típico al copiar/pegar) para que la contraseña que
+      // queda guardada sea exactamente la que se va a compartir y tipear al loguearse.
+      await crearAccesoAdmin({ uid: admin?.id, nombre: nombre.trim(), email: email.trim(), password: password.trim() || undefined })
       onSaved()
       onClose()
       setNombre('')

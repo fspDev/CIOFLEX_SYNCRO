@@ -16,7 +16,7 @@ export function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await signIn(loginInputAEmail(usuario), password)
+      await signIn(loginInputAEmail(usuario.trim()), password.trim())
     } catch {
       // el error ya queda en el store
     } finally {

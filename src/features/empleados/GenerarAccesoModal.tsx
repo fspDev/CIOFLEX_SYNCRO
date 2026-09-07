@@ -36,9 +36,10 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
     setError(null)
     try {
       const usuarioNormalizado = normalizarUsuario(usuario)
+      const passwordFinal = password.trim()
       const crearAccesoEmpleado = httpsCallable(functions, 'crearAccesoEmpleado')
-      await crearAccesoEmpleado({ empleadoId: empleado.id, usuario: usuarioNormalizado, password })
-      setResultado({ usuario: usuarioNormalizado, password })
+      await crearAccesoEmpleado({ empleadoId: empleado.id, usuario: usuarioNormalizado, password: passwordFinal })
+      setResultado({ usuario: usuarioNormalizado, password: passwordFinal })
       onSaved()
     } catch {
       setError('No se pudo generar el acceso. Verificá que las Cloud Functions estén deployadas.')
