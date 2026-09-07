@@ -72,10 +72,9 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
         <div className="flex items-center justify-between text-sm text-[var(--text-muted)]">
           <div>
             <p>{empleado.telefono || 'Sin teléfono'}</p>
-            <p>{empleado.email}</p>
             <p className="text-xs mt-0.5">
               {empleado.authUid ? (
-                <span style={{ color: 'var(--paid)' }}>Acceso generado</span>
+                <span style={{ color: 'var(--paid)' }}>Acceso generado · usuario: {empleado.usuario}</span>
               ) : (
                 <span style={{ color: 'var(--partial)' }}>Sin acceso todavía</span>
               )}
@@ -132,10 +131,15 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm">Jornadas</h3>
-            <Button variant="secondary" onClick={() => setShowJornada(true)}>
+            <Button variant="secondary" onClick={() => setShowJornada(true)} disabled={!tarifaActual}>
               + Cargar jornada
             </Button>
           </div>
+          {!tarifaActual && (
+            <p className="text-xs mb-3" style={{ color: 'var(--partial)' }}>
+              Fijá primero el valor de la hora para poder cargar jornadas.
+            </p>
+          )}
           {loading ? (
             <p className="text-sm text-[var(--text-muted)]">Cargando…</p>
           ) : jornadas.length === 0 ? (

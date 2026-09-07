@@ -17,7 +17,7 @@ export interface Empleado {
   nombre: string
   apellido: string
   telefono: string
-  email: string // usado para el login del empleado
+  usuario?: string // usuario simple de acceso (sin email), se define al generar el acceso
   activo: boolean
   authUid?: string // uid de Firebase Auth una vez creada la cuenta
   createdAt: string

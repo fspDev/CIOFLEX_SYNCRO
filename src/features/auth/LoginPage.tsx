@@ -3,11 +3,12 @@ import { useAuthStore } from '../../store/authStore'
 import { Button } from '../../components/ui/Button'
 import { Input, Field } from '../../components/ui/Input'
 import { asset } from '../../lib/utils'
+import { loginInputAEmail } from '../../lib/auth'
 
 export function LoginPage() {
   const signIn = useAuthStore((s) => s.signIn)
   const error = useAuthStore((s) => s.error)
-  const [email, setEmail] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -15,7 +16,7 @@ export function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await signIn(email, password)
+      await signIn(loginInputAEmail(usuario), password)
     } catch {
       // el error ya queda en el store
     } finally {
@@ -30,11 +31,11 @@ export function LoginPage() {
           <img src={asset('logo-white.png')} alt="Cioflex Syncro" className="h-14 object-contain" />
         </div>
         <h1 className="text-lg font-semibold text-center mb-1">Iniciar sesión</h1>
-        <p className="text-sm text-[var(--text-muted)] text-center mb-6">Ingresá con tu email y contraseña</p>
+        <p className="text-sm text-[var(--text-muted)] text-center mb-6">Ingresá con tu usuario y contraseña</p>
 
         <div className="space-y-4">
-          <Field label="Email">
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+          <Field label="Usuario">
+            <Input value={usuario} onChange={(e) => setUsuario(e.target.value)} required autoFocus autoCapitalize="none" />
           </Field>
           <Field label="Contraseña">
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />

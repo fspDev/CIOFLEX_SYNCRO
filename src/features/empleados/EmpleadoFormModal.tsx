@@ -16,20 +16,18 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
   const [nombre, setNombre] = useState(empleado?.nombre ?? '')
   const [apellido, setApellido] = useState(empleado?.apellido ?? '')
   const [telefono, setTelefono] = useState(empleado?.telefono ?? '')
-  const [email, setEmail] = useState(empleado?.email ?? '')
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      await crearEmpleado({ nombre, apellido, telefono, email, activo: true })
+      await crearEmpleado({ nombre, apellido, telefono, activo: true })
       onSaved()
       onClose()
       setNombre('')
       setApellido('')
       setTelefono('')
-      setEmail('')
     } finally {
       setSaving(false)
     }
@@ -46,9 +44,6 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
         </Field>
         <Field label="Teléfono">
           <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} />
-        </Field>
-        <Field label="Email (se usa para su acceso a la plataforma)">
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <p className="text-xs text-[var(--text-muted)]">
           Después de guardar, desde la ficha del empleado vas a poder generar su acceso (usuario y contraseña) para que pueda cargar sus horas.

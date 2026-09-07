@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore } from 'firebase/firestore'
 import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
@@ -14,5 +14,8 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+// ignoreUndefinedProperties: los formularios arman objetos con campos opcionales en `undefined`
+// (ej. horaInicio/horaFin cuando la jornada es por cantidad de horas) — sin esto, addDoc/updateDoc
+// revientan con "invalid-argument" en vez de simplemente omitir esos campos.
+export const db = initializeFirestore(app, { ignoreUndefinedProperties: true })
 export const functions = getFunctions(app)
