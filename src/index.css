@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b1120;
+  --surface: #131c2e;
+  --surface-2: #1b2740;
+  --border: #263352;
+  --text: #e7ecf7;
+  --text-muted: #94a3c4;
+  --brand-400: #5ea8ff;
+  --brand-500: #3b82f6;
+  --brand-600: #2563eb;
+
+  --debt: #ef4444;
+  --paid: #22c55e;
+  --partial: #f59e0b;
+  --desarme: #a855f7;
+  --armado: #3b82f6;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface-2: #eef1f8;
+    --border: #dbe1ee;
+    --text: #10182c;
+    --text-muted: #5b6685;
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f8;
+  --border: #dbe1ee;
+  --text: #10182c;
+  --text-muted: #5b6685;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+
+/* Native <option> ignores dark theme inheritance in most browsers */
+select > option {
+  background: #ffffff;
+  color: #0b1120;
+}

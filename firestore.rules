@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Defensivo: nunca revienta si el doc todavía no tiene el campo (ej. usuario recién creado).
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isSignedIn() && myProfile().data.get('rol', '') == 'admin';
+    }
+
+    function isOwnEmpleado(empleadoId) {
+      return isSignedIn() && myProfile().data.get('empleadoId', '') == empleadoId;
+    }
+
+    // ---- users: cada quien lee/edita su propio perfil; solo admin gestiona el resto ----
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ---- empleados / tarifas: admin gestiona todo; el empleado solo lee su propia ficha ----
+    match /empleados/{empleadoId} {
+      allow read: if isAdmin() || isOwnEmpleado(empleadoId);
+      allow write: if isAdmin();
+    }
+
+    match /tarifas_empleado/{id} {
+      allow read: if isAdmin() || isOwnEmpleado(resource.data.empleadoId);
+      allow write: if isAdmin();
+    }
+
+    // ---- jornadas: el empleado puede crear/leer las suyas; solo admin edita/elimina ----
+    match /jornadas/{id} {
+      allow read: if isAdmin() || isOwnEmpleado(resource.data.empleadoId);
+      allow create: if isAdmin() || isOwnEmpleado(request.resource.data.empleadoId);
+      allow update, delete: if isAdmin();
+    }
+
+    // ---- pagos a empleados: solo admin escribe; el empleado solo lee los suyos ----
+    match /pagos_empleado/{id} {
+      allow read: if isAdmin() || isOwnEmpleado(resource.data.empleadoId);
+      allow write: if isAdmin();
+    }
+
+    // ---- proyectos, pagos de proyecto y clientes: 100% admin ----
+    match /proyectos/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pagos_proyecto/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /clientes/{id} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

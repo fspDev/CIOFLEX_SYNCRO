@@ -1,0 +1,52 @@
+import { useState } from 'react'
+import { useAuthStore } from '../../store/authStore'
+import { Button } from '../../components/ui/Button'
+import { Input, Field } from '../../components/ui/Input'
+import { asset } from '../../lib/utils'
+
+export function LoginPage() {
+  const signIn = useAuthStore((s) => s.signIn)
+  const error = useAuthStore((s) => s.error)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await signIn(email, password)
+    } catch {
+      // el error ya queda en el store
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-xl">
+        <div className="flex justify-center mb-6">
+          <img src={asset('logo-white.png')} alt="Cioflex Syncro" className="h-14 object-contain" />
+        </div>
+        <h1 className="text-lg font-semibold text-center mb-1">Iniciar sesión</h1>
+        <p className="text-sm text-[var(--text-muted)] text-center mb-6">Ingresá con tu email y contraseña</p>
+
+        <div className="space-y-4">
+          <Field label="Email">
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+          </Field>
+          <Field label="Contraseña">
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </Field>
+        </div>
+
+        {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+
+        <Button type="submit" className="w-full mt-6" disabled={loading}>
+          {loading ? 'Ingresando…' : 'Ingresar'}
+        </Button>
+      </form>
+    </div>
+  )
+}
