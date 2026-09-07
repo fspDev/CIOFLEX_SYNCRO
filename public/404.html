@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // GitHub Pages no soporta rutas de SPA: cualquier URL que no sea el index literal
+      // (ej. recargar la página en /empleados, o abrir un link directo) devuelve 404.
+      // Este archivo redirige de vuelta al index, preservando la ruta como querystring,
+      // y App.tsx la restaura con history.replaceState.
+      var path = location.pathname + location.search + location.hash
+      sessionStorage.setItem('redirect-path', path)
+      location.replace('/CIOFLEX_SYNCRO/')
+    </script>
+  </head>
+  <body></body>
+</html>
