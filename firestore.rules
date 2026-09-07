@@ -13,17 +13,23 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && myProfile().data.get('rol', '') == 'admin';
+      return isSignedIn() && myProfile().data.get('rol', '') in ['admin', 'admin_supremo'];
+    }
+
+    function isAdminSupremo() {
+      return isSignedIn() && myProfile().data.get('rol', '') == 'admin_supremo';
     }
 
     function isOwnEmpleado(empleadoId) {
       return isSignedIn() && myProfile().data.get('empleadoId', '') == empleadoId;
     }
 
-    // ---- users: cada quien lee/edita su propio perfil; solo admin gestiona el resto ----
+    // ---- users: cada quien lee su propio perfil; solo admin_supremo escribe directo desde el
+    // cliente (el alta normal de empleados/admins pasa por Cloud Functions con el Admin SDK,
+    // que no está sujeto a estas reglas) ----
     match /users/{uid} {
       allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow write: if isAdmin();
+      allow write: if isAdminSupremo();
     }
 
     // ---- empleados / tarifas: admin gestiona todo; el empleado solo lee su propia ficha ----

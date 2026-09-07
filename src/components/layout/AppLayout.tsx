@@ -10,15 +10,23 @@ const ADMIN_TABS = [
   { to: '/clientes', label: 'Clientes' },
 ]
 
+const ADMIN_SUPREMO_TABS = [...ADMIN_TABS, { to: '/administradores', label: 'Administradores' }]
+
 const EMPLEADO_TABS = [
   { to: '/', label: 'Mis horas', end: true },
   { to: '/mis-pagos', label: 'Mis pagos' },
 ]
 
+const ROL_LABEL: Record<string, string> = {
+  admin_supremo: 'Admin supremo',
+  admin: 'Administrador',
+  empleado: 'Empleado',
+}
+
 export function AppLayout() {
   const profile = useAuthStore((s) => s.profile)
   const signOut = useAuthStore((s) => s.signOut)
-  const tabs = profile?.rol === 'admin' ? ADMIN_TABS : EMPLEADO_TABS
+  const tabs = profile?.rol === 'admin_supremo' ? ADMIN_SUPREMO_TABS : profile?.rol === 'admin' ? ADMIN_TABS : EMPLEADO_TABS
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg)]">
@@ -46,7 +54,7 @@ export function AppLayout() {
         </nav>
         <div className="hidden md:block mt-auto p-3 border-t border-[var(--border)]">
           <p className="text-sm font-medium truncate">{profile?.nombre}</p>
-          <p className="text-xs text-[var(--text-muted)] mb-2 truncate">{profile?.rol === 'admin' ? 'Administrador' : 'Empleado'}</p>
+          <p className="text-xs text-[var(--text-muted)] mb-2 truncate">{ROL_LABEL[profile?.rol ?? '']}</p>
           <button onClick={() => signOut()} className="text-xs text-red-400 hover:text-red-300">
             Cerrar sesión
           </button>

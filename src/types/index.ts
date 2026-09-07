@@ -1,7 +1,10 @@
 // Convención de fechas: toda fecha sin hora se guarda como string 'YYYY-MM-DD'
 // (evita corrimientos de huso horario). Timestamps con hora real usan ISO completo.
 
-export type Rol = 'admin' | 'empleado'
+// admin_supremo: acceso total + gestiona cuentas de admin_simple.
+// admin: acceso total a la plataforma (empleados, proyectos, clientes, calendario), pero no puede
+// crear/editar/eliminar otras cuentas de administrador.
+export type Rol = 'admin_supremo' | 'admin' | 'empleado'
 
 export interface UserProfile {
   id: string // uid de Firebase Auth

@@ -10,6 +10,7 @@ import { ClientesPage } from './features/clientes/ClientesPage'
 import { CalendarioPage } from './features/calendario/CalendarioPage'
 import { MisHorasPage } from './features/empleado-portal/MisHorasPage'
 import { MisPagosPage } from './features/empleado-portal/MisPagosPage'
+import { AdministradoresPage } from './features/administradores/AdministradoresPage'
 
 function App() {
   const init = useAuthStore((s) => s.init)
@@ -37,13 +38,14 @@ function App() {
 
       <Routes>
         <Route element={<AppLayout />}>
-          {profile.rol === 'admin' ? (
+          {profile.rol === 'admin' || profile.rol === 'admin_supremo' ? (
             <>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/empleados" element={<EmpleadosPage />} />
               <Route path="/proyectos" element={<ProyectosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
+              {profile.rol === 'admin_supremo' && <Route path="/administradores" element={<AdministradoresPage />} />}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           ) : (

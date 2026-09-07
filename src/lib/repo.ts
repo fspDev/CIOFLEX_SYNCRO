@@ -18,6 +18,7 @@ import type {
   Empleado,
   Jornada,
   PagoEmpleado,
+  UserProfile,
   PagoProyecto,
   Proyecto,
   TarifaEmpleado,
@@ -171,4 +172,11 @@ export async function eliminarCliente(id: string) {
 export async function listarClientes(): Promise<Cliente[]> {
   const snap = await getDocs(query(col('clientes'), orderBy('nombre')))
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Cliente, 'id'>) }))
+}
+
+// ---------- Administradores (colección `users`, roles admin/admin_supremo) ----------
+
+export async function listarAdministradores(): Promise<UserProfile[]> {
+  const snap = await getDocs(query(col('users'), where('rol', 'in', ['admin', 'admin_supremo'])))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<UserProfile, 'id'>) }))
 }
