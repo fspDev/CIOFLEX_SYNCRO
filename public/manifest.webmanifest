@@ -1,0 +1,17 @@
+{
+  "name": "Cioflex Syncro",
+  "short_name": "Cioflex",
+  "description": "Gestión de proyectos, horas de trabajo y pagos — Cioflex Soluciones Integrales",
+  "start_url": "/CIOFLEX_SYNCRO/",
+  "scope": "/CIOFLEX_SYNCRO/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/CIOFLEX_SYNCRO/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/CIOFLEX_SYNCRO/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/CIOFLEX_SYNCRO/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/CIOFLEX_SYNCRO/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
