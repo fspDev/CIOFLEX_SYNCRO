@@ -31,6 +31,9 @@ export function EmpleadosPage() {
     setLoading(true)
     const lista = await listarEmpleados()
     setEmpleados(lista)
+    // El panel de detalle recibe `selected` como prop -- si no se refresca acá, queda mostrando
+    // datos viejos (ej. "Sin acceso todavía" después de generarlo) hasta cerrar y reabrir.
+    setSelected((prev) => (prev ? (lista.find((e) => e.id === prev.id) ?? null) : null))
     const entries = await Promise.all(
       lista.map(async (e) => {
         const [jornadas, pagos] = await Promise.all([listarJornadasPorEmpleado(e.id), listarPagosPorEmpleado(e.id)])

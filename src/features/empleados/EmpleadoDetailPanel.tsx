@@ -10,7 +10,7 @@ import {
   listarTarifas,
 } from '../../lib/repo'
 import { calcularBalanceEmpleado } from '../../lib/balance'
-import { formatCurrency, formatDate, nombreCompleto } from '../../lib/utils'
+import { copiarAlPortapapeles, formatCurrency, formatDate, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
 import type { Empleado, Jornada, PagoEmpleado, TarifaEmpleado } from '../../types'
 import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
@@ -33,6 +33,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
   const [showAcceso, setShowAcceso] = useState(false)
+  const [copiado, setCopiado] = useState(false)
 
   async function reload() {
     setLoading(true)
@@ -67,12 +68,21 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
     onChanged()
   }
 
+  async function handleCopiarAcceso() {
+    if (!empleado.usuario || !empleado.passwordActual) return
+    const ok = await copiarAlPortapapeles(textoAccesoEmpleado(empleado.usuario, empleado.passwordActual))
+    if (ok) {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    }
+  }
+
   return (
     <SlidePanel open onClose={onClose} title={nombreCompleto(empleado.nombre, empleado.apellido)}>
       <div className="space-y-6">
         <div className="flex items-center justify-between text-sm text-[var(--text-muted)]">
           <div>
-            <p>{empleado.telefono || 'Sin teléfono'}</p>
+            <p>{empleado.telefono ? `Tel: ${empleado.telefono}` : 'Sin teléfono'}</p>
             <p className="text-xs mt-0.5">
               {empleado.authUid ? (
                 <span style={{ color: 'var(--paid)' }}>Acceso generado · usuario: {empleado.usuario}</span>
@@ -82,6 +92,11 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
+            {empleado.authUid && empleado.passwordActual && (
+              <Button variant="secondary" onClick={handleCopiarAcceso}>
+                {copiado ? 'Copiado ✓' : 'Copiar acceso'}
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => setShowAcceso(true)}>
               {empleado.authUid ? 'Resetear acceso' : 'Generar acceso'}
             </Button>
@@ -218,7 +233,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       />
       <PagoEmpleadoFormModal open={showPago} onClose={() => setShowPago(false)} onSaved={reload} empleadoId={empleado.id} />
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
-      <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={reload} empleado={empleado} />
+      <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={onChanged} empleado={empleado} />
     </SlidePanel>
   )
 }
