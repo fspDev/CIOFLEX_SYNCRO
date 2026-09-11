@@ -21,6 +21,7 @@ export interface Empleado {
   apellido: string
   telefono: string
   usuario?: string // usuario simple de acceso (sin email), se define al generar el acceso
+  passwordActual?: string // última contraseña asignada, guardada para poder compartirla de nuevo sin resetear
   activo: boolean
   authUid?: string // uid de Firebase Auth una vez creada la cuenta
   createdAt: string
@@ -40,6 +41,11 @@ export interface TarifaEmpleado {
 
 export type TipoCargaJornada = 'horas' | 'rango'
 
+// hora: se cobra horas * valorHora (comportamiento histórico). trabajo: monto fijo acordado
+// para ese trabajo puntual, independiente de las horas registradas. Solo un admin puede
+// cargar una jornada 'trabajo' — un empleado autocargándose sus horas siempre es 'hora'.
+export type TipoPagoJornada = 'hora' | 'trabajo'
+
 export interface Jornada {
   id: string
   empleadoId: string
@@ -50,8 +56,10 @@ export interface Jornada {
   horaFin?: string
   descripcion: string
   proyectoId?: string // opcional: jornada puede ser "suelta" o ligada a un proyecto
-  valorHora: number // congelado al momento de la carga (vigente ese mes)
-  montoTotal: number // horas * valorHora, calculado y guardado
+  tipoPago: TipoPagoJornada
+  valorHora?: number // congelado al momento de la carga (vigente ese mes); solo si tipoPago === 'hora'
+  montoFijo?: number // monto acordado para el trabajo; solo si tipoPago === 'trabajo'
+  montoTotal: number // horas * valorHora, o montoFijo si es por trabajo — siempre calculado y guardado
   createdAt: string
   updatedAt: string
 }
@@ -70,6 +78,9 @@ export interface PagoEmpleado {
 
 export type EstadoComercialProyecto = 'negociacion' | 'confirmado' | 'cancelado'
 
+// Los 3 servicios que ofrece la empresa — determina qué tipo de trabajo es el proyecto.
+export type TipoServicioProyecto = 'armado' | 'mantenimiento' | 'construccion'
+
 export interface EmpleadoAsignado {
   empleadoId: string
   horaInicio?: string
@@ -81,6 +92,7 @@ export interface Proyecto {
   nombre: string
   ubicacion: string
   clienteId: string
+  tipoServicio: TipoServicioProyecto
   fechaArmadoInicio?: string // 'YYYY-MM-DD'
   fechaEventoInicio?: string
   fechaEventoFin?: string
@@ -88,6 +100,10 @@ export interface Proyecto {
   fechaDesarmeFin?: string
   estadoComercial: EstadoComercialProyecto
   empleadosAsignados: EmpleadoAsignado[]
+  // Espejo de empleadosAsignados.map(a => a.empleadoId), mantenido por el repo en cada escritura.
+  // Existe solo para que las reglas de Firestore y las queries puedan filtrar por empleado
+  // (un array de objetos no sirve para `array-contains` ni para comparar en las reglas).
+  empleadosIds: string[]
   presupuesto: number
   notas?: string
   createdAt: string

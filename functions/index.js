@@ -69,7 +69,7 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
     createdAt: new Date().toISOString(),
   })
 
-  await empleadoRef.update({ authUid: userRecord.uid, usuario })
+  await empleadoRef.update({ authUid: userRecord.uid, usuario, passwordActual: password })
 
   return { uid: userRecord.uid, usuario }
 })

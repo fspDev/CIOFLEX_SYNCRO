@@ -76,8 +76,18 @@ export function MisHorasPage() {
             <Card key={j.id} className="p-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium">
-                  {formatDate(j.fecha)} · {j.horas} hs
-                  {j.tipoCarga === 'rango' && j.horaInicio && j.horaFin ? ` (${j.horaInicio}–${j.horaFin})` : ''}
+                  {formatDate(j.fecha)}
+                  {j.tipoPago === 'trabajo' ? (
+                    <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
+                      · trabajo
+                    </span>
+                  ) : (
+                    <>
+                      {' '}
+                      · {j.horas} hs
+                      {j.tipoCarga === 'rango' && j.horaInicio && j.horaFin ? ` (${j.horaInicio}–${j.horaFin})` : ''}
+                    </>
+                  )}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
               </div>

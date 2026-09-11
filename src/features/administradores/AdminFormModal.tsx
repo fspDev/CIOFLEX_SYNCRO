@@ -3,6 +3,7 @@ import { httpsCallable } from 'firebase/functions'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { Field, Input } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { functions } from '../../lib/firebase'
 import type { UserProfile } from '../../types'
 
@@ -51,7 +52,7 @@ export function AdminFormModal({ open, onClose, onSaved, admin }: Props) {
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Field label={admin ? 'Nueva contraseña (opcional)' : 'Contraseña'}>
-          <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required={!admin} />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required={!admin} />
         </Field>
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">

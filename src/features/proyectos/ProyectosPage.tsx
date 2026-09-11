@@ -5,9 +5,15 @@ import { Input, Select } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
 import { listarClientes, listarPagosPorProyecto, listarProyectos } from '../../lib/repo'
 import { calcularBalanceProyecto, estadoPago, ESTADO_PAGO_COLOR, ESTADO_PAGO_LABEL } from '../../lib/balance'
-import { estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
+import {
+  estadoCronologico,
+  ESTADO_CRONOLOGICO_COLOR,
+  ESTADO_CRONOLOGICO_LABEL,
+  TIPO_SERVICIO_COLOR,
+  TIPO_SERVICIO_LABEL,
+} from '../../lib/proyectoEstado'
 import { compareDateStr, formatCurrency, formatDate } from '../../lib/utils'
-import type { Cliente, EstadoComercialProyecto, PagoProyecto, Proyecto } from '../../types'
+import type { Cliente, EstadoComercialProyecto, PagoProyecto, Proyecto, TipoServicioProyecto } from '../../types'
 import { ProyectoFormModal } from './ProyectoFormModal'
 import { ProyectoDetailPanel } from './ProyectoDetailPanel'
 
@@ -21,6 +27,7 @@ export function ProyectosPage() {
 
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroEstadoComercial, setFiltroEstadoComercial] = useState<EstadoComercialProyecto | ''>('')
+  const [filtroTipoServicio, setFiltroTipoServicio] = useState<TipoServicioProyecto | ''>('')
   const [busqueda, setBusqueda] = useState('')
 
   async function reload() {
@@ -41,9 +48,10 @@ export function ProyectosPage() {
     return proyectos
       .filter((p) => !filtroCliente || p.clienteId === filtroCliente)
       .filter((p) => !filtroEstadoComercial || p.estadoComercial === filtroEstadoComercial)
+      .filter((p) => !filtroTipoServicio || p.tipoServicio === filtroTipoServicio)
       .filter((p) => !busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
       .sort((a, b) => compareDateStr(a.fechaEventoInicio ?? '9999', b.fechaEventoInicio ?? '9999'))
-  }, [proyectos, filtroCliente, filtroEstadoComercial, busqueda])
+  }, [proyectos, filtroCliente, filtroEstadoComercial, filtroTipoServicio, busqueda])
 
   const totales = useMemo(() => {
     return filtrados.reduce(
@@ -108,6 +116,18 @@ export function ProyectosPage() {
           <option value="confirmado">Confirmado</option>
           <option value="cancelado">Cancelado</option>
         </Select>
+        <Select
+          value={filtroTipoServicio}
+          onChange={(e) => setFiltroTipoServicio(e.target.value as TipoServicioProyecto | '')}
+          className="max-w-[200px]"
+        >
+          <option value="">Todos los servicios</option>
+          {(Object.entries(TIPO_SERVICIO_LABEL) as [TipoServicioProyecto, string][]).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
       </div>
 
       {loading ? (
@@ -141,6 +161,7 @@ export function ProyectosPage() {
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
                     <div className="flex gap-1.5">
+                      <Badge color={TIPO_SERVICIO_COLOR[p.tipoServicio]}>{TIPO_SERVICIO_LABEL[p.tipoServicio]}</Badge>
                       <Badge color={ESTADO_CRONOLOGICO_COLOR[cronologico]}>{ESTADO_CRONOLOGICO_LABEL[cronologico]}</Badge>
                       <Badge color={ESTADO_PAGO_COLOR[estado]}>{ESTADO_PAGO_LABEL[estado]}</Badge>
                     </div>

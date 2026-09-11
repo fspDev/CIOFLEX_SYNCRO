@@ -9,6 +9,7 @@ import { ProyectosPage } from './features/proyectos/ProyectosPage'
 import { ClientesPage } from './features/clientes/ClientesPage'
 import { CalendarioPage } from './features/calendario/CalendarioPage'
 import { MisHorasPage } from './features/empleado-portal/MisHorasPage'
+import { MisProyectosPage } from './features/empleado-portal/MisProyectosPage'
 import { MisPagosPage } from './features/empleado-portal/MisPagosPage'
 import { AdministradoresPage } from './features/administradores/AdministradoresPage'
 import { MovimientosPage } from './features/movimientos/MovimientosPage'
@@ -53,6 +54,7 @@ function App() {
           ) : (
             <>
               <Route path="/" element={<MisHorasPage />} />
+              <Route path="/mis-proyectos" element={<MisProyectosPage />} />
               <Route path="/mis-pagos" element={<MisPagosPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>

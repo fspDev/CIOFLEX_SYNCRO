@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
-import { formatCurrency, initials, nombreCompleto } from '../../lib/utils'
+import { Dropdown, DropdownItem } from '../../components/ui/Dropdown'
+import { copiarAlPortapapeles, formatCurrency, initials, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
 import { listarEmpleados, listarJornadasPorEmpleado, listarPagosPorEmpleado } from '../../lib/repo'
 import { calcularBalanceEmpleado, type BalanceEmpleado } from '../../lib/balance'
 import type { Empleado } from '../../types'
 import { EmpleadoFormModal } from './EmpleadoFormModal'
 import { EmpleadoDetailPanel } from './EmpleadoDetailPanel'
+import { GenerarAccesoModal } from './GenerarAccesoModal'
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos'
 type FiltroDeuda = 'todos' | 'con_deuda' | 'sin_deuda'
@@ -18,6 +20,8 @@ export function EmpleadosPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<Empleado | null>(null)
+  const [accesoTarget, setAccesoTarget] = useState<Empleado | null>(null)
+  const [feedback, setFeedback] = useState<{ id: string; texto: string } | null>(null)
 
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos')
@@ -66,6 +70,13 @@ export function EmpleadosPage() {
       { generado: 0, pagado: 0, adeudado: 0 },
     )
   }, [filtrados, balances])
+
+  async function handleCopiarAcceso(e: Empleado) {
+    if (!e.usuario || !e.passwordActual) return
+    const ok = await copiarAlPortapapeles(textoAccesoEmpleado(e.usuario, e.passwordActual))
+    setFeedback({ id: e.id, texto: ok ? 'Copiado ✓' : 'No se pudo copiar' })
+    setTimeout(() => setFeedback(null), 2000)
+  }
 
   return (
     <div>
@@ -133,11 +144,55 @@ export function EmpleadosPage() {
                     <p className="text-sm text-[var(--text-muted)] truncate">{e.telefono || 'Sin teléfono'}</p>
                   </div>
                   {!e.activo && (
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] shrink-0">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] shrink-0">
                       Inactivo
                     </span>
                   )}
+                  <div className="ml-auto shrink-0" onClick={(ev) => ev.stopPropagation()}>
+                    <Dropdown trigger={<span className="text-lg leading-none">⋮</span>}>
+                      {(close) => (
+                        <>
+                          {e.authUid ? (
+                            <>
+                              {e.passwordActual ? (
+                                <DropdownItem
+                                  onClick={() => {
+                                    close()
+                                    handleCopiarAcceso(e)
+                                  }}
+                                >
+                                  Copiar usuario y contraseña
+                                </DropdownItem>
+                              ) : (
+                                <p className="px-3.5 py-1.5 text-xs text-[var(--text-muted)]">
+                                  Sin contraseña guardada — reseteá el acceso para poder copiarlo.
+                                </p>
+                              )}
+                              <DropdownItem
+                                onClick={() => {
+                                  close()
+                                  setAccesoTarget(e)
+                                }}
+                              >
+                                Resetear acceso
+                              </DropdownItem>
+                            </>
+                          ) : (
+                            <DropdownItem
+                              onClick={() => {
+                                close()
+                                setAccesoTarget(e)
+                              }}
+                            >
+                              Generar acceso
+                            </DropdownItem>
+                          )}
+                        </>
+                      )}
+                    </Dropdown>
+                  </div>
                 </div>
+                {feedback?.id === e.id && <p className="text-xs text-right mt-1" style={{ color: 'var(--paid)' }}>{feedback.texto}</p>}
                 <div className="mt-3 pt-3 border-t border-[var(--border)] flex items-center justify-between text-sm">
                   <span className="text-[var(--text-muted)]">Adeudado</span>
                   <span className="font-medium" style={{ color: saldo > 0 ? 'var(--debt)' : 'var(--paid)' }}>
@@ -156,6 +211,14 @@ export function EmpleadosPage() {
           empleado={selected}
           onClose={() => setSelected(null)}
           onChanged={reload}
+        />
+      )}
+      {accesoTarget && (
+        <GenerarAccesoModal
+          open
+          onClose={() => setAccesoTarget(null)}
+          onSaved={reload}
+          empleado={accesoTarget}
         />
       )}
     </div>

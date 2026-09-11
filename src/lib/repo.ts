@@ -89,15 +89,21 @@ export async function eliminarJornada(id: string) {
   await deleteDoc(doc(db, 'jornadas', id))
 }
 
+// Migración al vuelo: jornadas creadas antes de que existiera tipoPago se asumen 'hora'
+// (todo pago era por hora hasta entonces) — evita un script de migración aparte.
+function normalizarJornada(id: string, data: Omit<Jornada, 'id'>): Jornada {
+  return { id, ...data, tipoPago: data.tipoPago ?? 'hora' }
+}
+
 export async function listarJornadasPorEmpleado(empleadoId: string): Promise<Jornada[]> {
   const snap = await getDocs(query(col('jornadas'), where('empleadoId', '==', empleadoId)))
-  const jornadas = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Jornada, 'id'>) }))
+  const jornadas = snap.docs.map((d) => normalizarJornada(d.id, d.data() as Omit<Jornada, 'id'>))
   return jornadas.sort((a, b) => compareDateStr(b.fecha, a.fecha))
 }
 
 export async function listarJornadasPorProyecto(proyectoId: string): Promise<Jornada[]> {
   const snap = await getDocs(query(col('jornadas'), where('proyectoId', '==', proyectoId)))
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Jornada, 'id'>) }))
+  return snap.docs.map((d) => normalizarJornada(d.id, d.data() as Omit<Jornada, 'id'>))
 }
 
 // ---------- Pagos a empleados ----------
@@ -119,23 +125,42 @@ export async function listarPagosPorEmpleado(empleadoId: string): Promise<PagoEm
 
 // ---------- Proyectos ----------
 
-export async function crearProyecto(data: Omit<Proyecto, 'id' | 'createdAt' | 'updatedAt'>) {
+// empleadosIds es un espejo de empleadosAsignados solo para que las reglas de Firestore y las
+// queries puedan filtrar por empleado (ver comentario en el tipo Proyecto) — se recalcula acá
+// para que ningún llamador se olvide de mantenerlo sincronizado.
+function conEmpleadosIds<T extends { empleadosAsignados?: Proyecto['empleadosAsignados'] }>(data: T) {
+  if (!data.empleadosAsignados) return data
+  return { ...data, empleadosIds: data.empleadosAsignados.map((a) => a.empleadoId) }
+}
+
+export async function crearProyecto(data: Omit<Proyecto, 'id' | 'createdAt' | 'updatedAt' | 'empleadosIds'>) {
   const now = new Date().toISOString()
-  const ref = await addDoc(col('proyectos'), { ...data, createdAt: now, updatedAt: now })
+  const ref = await addDoc(col('proyectos'), { ...conEmpleadosIds(data), createdAt: now, updatedAt: now })
   return ref.id
 }
 
-export async function actualizarProyecto(id: string, data: Partial<Proyecto>) {
-  await updateDoc(doc(db, 'proyectos', id), { ...data, updatedAt: new Date().toISOString() })
+export async function actualizarProyecto(id: string, data: Partial<Omit<Proyecto, 'empleadosIds'>>) {
+  await updateDoc(doc(db, 'proyectos', id), { ...conEmpleadosIds(data), updatedAt: new Date().toISOString() })
 }
 
 export async function eliminarProyecto(id: string) {
   await deleteDoc(doc(db, 'proyectos', id))
 }
 
+// Migración al vuelo: proyectos creados antes de que existiera tipoServicio se asumen 'armado'
+// (era el único servicio que ofrecía la empresa hasta entonces).
+function normalizarProyecto(id: string, data: Omit<Proyecto, 'id'>): Proyecto {
+  return { id, ...data, tipoServicio: data.tipoServicio ?? 'armado', empleadosIds: data.empleadosIds ?? [] }
+}
+
 export async function listarProyectos(): Promise<Proyecto[]> {
   const snap = await getDocs(col('proyectos'))
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Proyecto, 'id'>) }))
+  return snap.docs.map((d) => normalizarProyecto(d.id, d.data() as Omit<Proyecto, 'id'>))
+}
+
+export async function listarProyectosPorEmpleado(empleadoId: string): Promise<Proyecto[]> {
+  const snap = await getDocs(query(col('proyectos'), where('empleadosIds', 'array-contains', empleadoId)))
+  return snap.docs.map((d) => normalizarProyecto(d.id, d.data() as Omit<Proyecto, 'id'>))
 }
 
 // ---------- Pagos de proyectos ----------

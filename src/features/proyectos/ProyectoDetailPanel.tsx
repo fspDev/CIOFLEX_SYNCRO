@@ -5,7 +5,13 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { eliminarPagoProyecto, eliminarProyecto, listarClientes, listarEmpleados, listarPagosPorProyecto } from '../../lib/repo'
 import { calcularBalanceProyecto, estadoPago, ESTADO_PAGO_COLOR, ESTADO_PAGO_LABEL } from '../../lib/balance'
-import { estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
+import {
+  estadoCronologico,
+  ESTADO_CRONOLOGICO_COLOR,
+  ESTADO_CRONOLOGICO_LABEL,
+  TIPO_SERVICIO_COLOR,
+  TIPO_SERVICIO_LABEL,
+} from '../../lib/proyectoEstado'
 import { formatCurrency, formatDate, nombreCompleto } from '../../lib/utils'
 import type { Cliente, Empleado, PagoProyecto, Proyecto } from '../../types'
 import { PagoProyectoFormModal } from './PagoProyectoFormModal'
@@ -58,7 +64,8 @@ export function ProyectoDetailPanel({ proyecto, onClose, onChanged }: Props) {
     <SlidePanel open onClose={onClose} title={proyecto.nombre}>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Badge color={TIPO_SERVICIO_COLOR[proyecto.tipoServicio]}>{TIPO_SERVICIO_LABEL[proyecto.tipoServicio]}</Badge>
             <Badge color={ESTADO_CRONOLOGICO_COLOR[cronologico]}>{ESTADO_CRONOLOGICO_LABEL[cronologico]}</Badge>
             <Badge color={ESTADO_PAGO_COLOR[estado]}>{ESTADO_PAGO_LABEL[estado]}</Badge>
           </div>

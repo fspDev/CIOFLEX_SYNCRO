@@ -5,7 +5,8 @@ import { Field, Input, Select, Textarea } from '../../components/ui/Input'
 import { MontoInput } from '../../components/ui/MontoInput'
 import { actualizarProyecto, crearProyecto, listarClientes, listarEmpleados } from '../../lib/repo'
 import { nombreCompleto, todayStr } from '../../lib/utils'
-import type { Cliente, Empleado, EmpleadoAsignado, EstadoComercialProyecto, Proyecto } from '../../types'
+import { TIPO_SERVICIO_LABEL } from '../../lib/proyectoEstado'
+import type { Cliente, Empleado, EmpleadoAsignado, EstadoComercialProyecto, Proyecto, TipoServicioProyecto } from '../../types'
 
 interface Props {
   open: boolean
@@ -18,6 +19,7 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
   const [nombre, setNombre] = useState(proyecto?.nombre ?? '')
   const [ubicacion, setUbicacion] = useState(proyecto?.ubicacion ?? '')
   const [clienteId, setClienteId] = useState(proyecto?.clienteId ?? '')
+  const [tipoServicio, setTipoServicio] = useState<TipoServicioProyecto>(proyecto?.tipoServicio ?? 'armado')
   const [estadoComercial, setEstadoComercial] = useState<EstadoComercialProyecto>(proyecto?.estadoComercial ?? 'negociacion')
   const [fechaArmadoInicio, setFechaArmadoInicio] = useState(proyecto?.fechaArmadoInicio ?? '')
   const [fechaEventoInicio, setFechaEventoInicio] = useState(proyecto?.fechaEventoInicio ?? todayStr())
@@ -58,6 +60,7 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
       nombre,
       ubicacion,
       clienteId,
+      tipoServicio,
       estadoComercial,
       fechaArmadoInicio: fechaArmadoInicio || undefined,
       fechaEventoInicio: fechaEventoInicio || undefined,
@@ -104,14 +107,24 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
               ))}
             </Select>
           </Field>
-          <Field label="Estado comercial">
-            <Select value={estadoComercial} onChange={(e) => setEstadoComercial(e.target.value as EstadoComercialProyecto)}>
-              <option value="negociacion">Negociación</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="cancelado">Cancelado</option>
+          <Field label="Tipo de servicio">
+            <Select value={tipoServicio} onChange={(e) => setTipoServicio(e.target.value as TipoServicioProyecto)}>
+              {(Object.entries(TIPO_SERVICIO_LABEL) as [TipoServicioProyecto, string][]).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </Select>
           </Field>
         </div>
+
+        <Field label="Estado comercial">
+          <Select value={estadoComercial} onChange={(e) => setEstadoComercial(e.target.value as EstadoComercialProyecto)}>
+            <option value="negociacion">Negociación</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="cancelado">Cancelado</option>
+          </Select>
+        </Field>
 
         <p className="text-xs font-medium text-[var(--text-muted)] pt-1">Fechas</p>
         <div className="grid grid-cols-2 gap-3">

@@ -1,4 +1,4 @@
-import type { EstadoCronologico, Proyecto } from '../types'
+import type { EstadoCronologico, Proyecto, TipoServicioProyecto } from '../types'
 import { compareDateStr, todayStr } from './utils'
 
 /**
@@ -40,4 +40,16 @@ export const ESTADO_CRONOLOGICO_COLOR: Record<EstadoCronologico, string> = {
   en_curso: 'var(--brand-500)',
   desarme: 'var(--desarme)',
   finalizado: 'var(--paid)',
+}
+
+export const TIPO_SERVICIO_LABEL: Record<TipoServicioProyecto, string> = {
+  armado: 'Armado',
+  mantenimiento: 'Mantenimiento',
+  construccion: 'Construcción',
+}
+
+export const TIPO_SERVICIO_COLOR: Record<TipoServicioProyecto, string> = {
+  armado: 'var(--armado)',
+  mantenimiento: 'var(--partial)',
+  construccion: 'var(--desarme)',
 }

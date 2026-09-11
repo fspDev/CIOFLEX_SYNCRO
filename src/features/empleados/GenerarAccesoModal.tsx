@@ -3,8 +3,10 @@ import { httpsCallable } from 'firebase/functions'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { Field, Input } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { functions } from '../../lib/firebase'
 import { normalizarUsuario } from '../../lib/auth'
+import { copiarAlPortapapeles, textoAccesoEmpleado } from '../../lib/utils'
 import type { Empleado } from '../../types'
 
 interface Props {
@@ -14,10 +16,6 @@ interface Props {
   empleado: Empleado
 }
 
-function generarPassword() {
-  return Math.random().toString(36).slice(-8)
-}
-
 function usuarioSugerido(empleado: Empleado) {
   if (empleado.usuario) return empleado.usuario
   return normalizarUsuario(`${empleado.nombre}.${empleado.apellido}`)
@@ -25,10 +23,11 @@ function usuarioSugerido(empleado: Empleado) {
 
 export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) {
   const [usuario, setUsuario] = useState(usuarioSugerido(empleado))
-  const [password, setPassword] = useState(generarPassword())
+  const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<{ usuario: string; password: string } | null>(null)
+  const [copiado, setCopiado] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,7 +49,17 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
 
   function handleClose() {
     setResultado(null)
+    setCopiado(false)
     onClose()
+  }
+
+  async function handleCopiar() {
+    if (!resultado) return
+    const ok = await copiarAlPortapapeles(textoAccesoEmpleado(resultado.usuario, resultado.password))
+    if (ok) {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    }
   }
 
   return (
@@ -70,6 +79,9 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
               {resultado.password}
             </p>
           </div>
+          <Button variant="secondary" className="w-full" onClick={handleCopiar}>
+            {copiado ? 'Copiado ✓' : 'Copiar'}
+          </Button>
           <Button className="w-full" onClick={handleClose}>
             Listo
           </Button>
@@ -83,12 +95,13 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
             Sin espacios ni email — solo un nombre de usuario simple, ej. <code>juan.perez</code>.
           </p>
           <Field label="Contraseña temporal">
-            <div className="flex gap-2">
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-              <Button type="button" variant="secondary" onClick={() => setPassword(generarPassword())}>
-                Generar
-              </Button>
-            </div>
+            <PasswordInput
+              defaultVisible
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
           </Field>
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">

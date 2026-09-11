@@ -29,6 +29,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [tarifas, setTarifas] = useState<TarifaEmpleado[]>([])
   const [loading, setLoading] = useState(true)
   const [showJornada, setShowJornada] = useState(false)
+  const [jornadaEditando, setJornadaEditando] = useState<Jornada | null>(null)
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
   const [showAcceso, setShowAcceso] = useState(false)
@@ -131,13 +132,13 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-sm">Jornadas</h3>
-            <Button variant="secondary" onClick={() => setShowJornada(true)} disabled={!tarifaActual}>
+            <Button variant="secondary" onClick={() => setShowJornada(true)}>
               + Cargar jornada
             </Button>
           </div>
           {!tarifaActual && (
             <p className="text-xs mb-3" style={{ color: 'var(--partial)' }}>
-              Fijá primero el valor de la hora para poder cargar jornadas.
+              Para cargar jornadas por hora, fijá primero el valor de la hora. Los trabajos por monto fijo no lo necesitan.
             </p>
           )}
           {loading ? (
@@ -150,12 +151,30 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                 <Card key={j.id} className="p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
-                      {formatDate(j.fecha)} · {j.horas} hs
-                      {j.tipoCarga === 'rango' && j.horaInicio && j.horaFin ? ` (${j.horaInicio}–${j.horaFin})` : ''}
+                      {formatDate(j.fecha)}
+                      {j.tipoPago === 'trabajo' ? (
+                        <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
+                          · trabajo
+                        </span>
+                      ) : (
+                        <>
+                          {' '}
+                          · {j.horas} hs
+                          {j.tipoCarga === 'rango' && j.horaInicio && j.horaFin ? ` (${j.horaInicio}–${j.horaFin})` : ''}
+                        </>
+                      )}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
                   </div>
-                  <p className="text-sm font-medium shrink-0">{formatCurrency(j.montoTotal)}</p>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <p className="text-sm font-medium">{formatCurrency(j.montoTotal)}</p>
+                    <button
+                      onClick={() => setJornadaEditando(j)}
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+                    >
+                      Editar
+                    </button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -190,6 +209,13 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       </div>
 
       <JornadaFormModal open={showJornada} onClose={() => setShowJornada(false)} onSaved={reload} empleadoId={empleado.id} />
+      <JornadaFormModal
+        open={!!jornadaEditando}
+        onClose={() => setJornadaEditando(null)}
+        onSaved={reload}
+        empleadoId={empleado.id}
+        jornada={jornadaEditando ?? undefined}
+      />
       <PagoEmpleadoFormModal open={showPago} onClose={() => setShowPago(false)} onSaved={reload} empleadoId={empleado.id} />
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
       <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={reload} empleado={empleado} />

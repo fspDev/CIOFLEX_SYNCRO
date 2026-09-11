@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuthStore } from '../../store/authStore'
 import { Button } from '../../components/ui/Button'
 import { Input, Field } from '../../components/ui/Input'
+import { PasswordInput } from '../../components/ui/PasswordInput'
 import { asset } from '../../lib/utils'
 import { loginInputAEmail } from '../../lib/auth'
 
@@ -38,7 +39,7 @@ export function LoginPage() {
             <Input value={usuario} onChange={(e) => setUsuario(e.target.value)} required autoFocus autoCapitalize="none" />
           </Field>
           <Field label="Contraseña">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required />
           </Field>
         </div>
 

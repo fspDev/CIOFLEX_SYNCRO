@@ -75,3 +75,20 @@ export function nombreCompleto(nombre: string, apellido: string): string {
 export function initials(nombre: string, apellido: string): string {
   return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase()
 }
+
+// URL pública de la PWA en GitHub Pages (ver `base` en vite.config.ts, tiene que coincidir).
+export const APP_URL = 'https://fspdev.github.io/CIOFLEX_SYNCRO/'
+
+export function textoAccesoEmpleado(usuario: string, password: string): string {
+  return `Usuario: ${usuario}\nContraseña: ${password}\n${APP_URL}`
+}
+
+/** Copia al portapapeles; devuelve si funcionó (puede fallar en contextos sin permiso/HTTPS). */
+export async function copiarAlPortapapeles(texto: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texto)
+    return true
+  } catch {
+    return false
+  }
+}

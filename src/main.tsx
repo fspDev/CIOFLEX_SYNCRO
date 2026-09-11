@@ -2,6 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { applyThemePref, getThemePref } from './lib/theme'
+
+applyThemePref(getThemePref())
 
 // GitHub Pages no tiene rewrite de rutas de SPA: 404.html guarda la ruta pedida
 // y redirige acá. Antes de montar el router, la restauramos con replaceState
