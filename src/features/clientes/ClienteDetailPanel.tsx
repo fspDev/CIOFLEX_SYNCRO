@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { Collapsible } from '../../components/ui/Collapsible'
 import { eliminarCliente, listarPagosPorProyecto, listarProyectosPorCliente } from '../../lib/repo'
 import { calcularBalanceProyecto } from '../../lib/balance'
 import { estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
@@ -84,24 +85,26 @@ export function ClienteDetailPanel({ cliente, onClose, onChanged }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Presupuestado</p>
-            <p className="font-semibold">{loading ? '…' : formatCurrency(totales.presupuestado)}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Cobrado</p>
-            <p className="font-semibold" style={{ color: 'var(--paid)' }}>
-              {loading ? '…' : formatCurrency(totales.cobrado)}
-            </p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Pendiente</p>
-            <p className="font-semibold" style={{ color: totales.pendiente > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-              {loading ? '…' : formatCurrency(totales.pendiente)}
-            </p>
-          </Card>
-        </div>
+        <Collapsible title="Balance">
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Presupuestado</p>
+              <p className="font-semibold">{loading ? '…' : formatCurrency(totales.presupuestado)}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Cobrado</p>
+              <p className="font-semibold" style={{ color: 'var(--paid)' }}>
+                {loading ? '…' : formatCurrency(totales.cobrado)}
+              </p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Pendiente</p>
+              <p className="font-semibold" style={{ color: totales.pendiente > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+                {loading ? '…' : formatCurrency(totales.pendiente)}
+              </p>
+            </Card>
+          </div>
+        </Collapsible>
 
         <div>
           <div className="flex items-center justify-between mb-3">

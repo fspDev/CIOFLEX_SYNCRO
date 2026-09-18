@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
 import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { Collapsible } from '../../components/ui/Collapsible'
 import { listarClientes, listarPagosPorProyecto, listarProyectos } from '../../lib/repo'
 import { calcularBalanceProyecto, estadoPago, ESTADO_PAGO_COLOR, ESTADO_PAGO_LABEL } from '../../lib/balance'
 import { diasDelProyecto, estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
@@ -80,24 +81,26 @@ export function ProyectosPage() {
         <Button onClick={() => setShowForm(true)}>+ Nuevo proyecto</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Presupuestado</p>
-          <p className="text-xl font-semibold">{loading ? '…' : formatCurrency(totales.presupuestado)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Cobrado</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.cobrado)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Pendiente de cobro</p>
-          <p className="text-xl font-semibold" style={{ color: totales.pendiente > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.pendiente)}
-          </p>
-        </Card>
-      </div>
+      <Collapsible title="Balance">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Presupuestado</p>
+            <p className="text-xl font-semibold">{loading ? '…' : formatCurrency(totales.presupuestado)}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Cobrado</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.cobrado)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Pendiente de cobro</p>
+            <p className="text-xl font-semibold" style={{ color: totales.pendiente > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.pendiente)}
+            </p>
+          </Card>
+        </div>
+      </Collapsible>
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Input placeholder="Buscar…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="max-w-[200px]" />

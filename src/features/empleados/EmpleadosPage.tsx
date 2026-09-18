@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
 import { Dropdown, DropdownItem } from '../../components/ui/Dropdown'
 import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { Collapsible } from '../../components/ui/Collapsible'
 import { copiarAlPortapapeles, formatCurrency, initials, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
 import { listarEmpleados, listarJornadasPorEmpleado, listarPagosPorEmpleado } from '../../lib/repo'
 import { calcularBalanceEmpleado, type BalanceEmpleado } from '../../lib/balance'
@@ -98,24 +99,26 @@ export function EmpleadosPage() {
         <Button onClick={() => setShowForm(true)}>+ Nuevo empleado</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Total general (generado)</p>
-          <p className="text-xl font-semibold">{loading ? '…' : formatCurrency(totales.generado)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Total pagado</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.pagado)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Total adeudado</p>
-          <p className="text-xl font-semibold" style={{ color: totales.adeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.adeudado)}
-          </p>
-        </Card>
-      </div>
+      <Collapsible title="Balance">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Total general (generado)</p>
+            <p className="text-xl font-semibold">{loading ? '…' : formatCurrency(totales.generado)}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Total pagado</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.pagado)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Total adeudado</p>
+            <p className="text-xl font-semibold" style={{ color: totales.adeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.adeudado)}
+            </p>
+          </Card>
+        </div>
+      </Collapsible>
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Input placeholder="Buscar empleado…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="max-w-[200px]" />

@@ -152,24 +152,26 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
           )}
         </Card>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
-            <p className="font-semibold">{formatCurrency(balance.totalGenerado)}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
-            <p className="font-semibold" style={{ color: 'var(--paid)' }}>
-              {formatCurrency(balance.totalPagado)}
-            </p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
-            <p className="font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-              {formatCurrency(balance.saldoAdeudado)}
-            </p>
-          </Card>
-        </div>
+        <Collapsible title="Balance">
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
+              <p className="font-semibold">{formatCurrency(balance.totalGenerado)}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
+              <p className="font-semibold" style={{ color: 'var(--paid)' }}>
+                {formatCurrency(balance.totalPagado)}
+              </p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
+              <p className="font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+                {formatCurrency(balance.saldoAdeudado)}
+              </p>
+            </Card>
+          </div>
+        </Collapsible>
 
         <Collapsible
           title="Pagos realizados"

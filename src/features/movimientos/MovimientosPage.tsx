@@ -3,6 +3,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Input'
 import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { Collapsible } from '../../components/ui/Collapsible'
 import { eliminarMovimiento, listarMovimientos, obtenerCategoriasMovimiento } from '../../lib/repo'
 import { compareDateStr, formatCurrency, formatDate } from '../../lib/utils'
 import type { CategoriaMovimiento, MovimientoCaja, TipoMovimiento } from '../../types'
@@ -69,26 +70,28 @@ export function MovimientosPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Ingresos</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.ingresos)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Egresos</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--debt)' }}>
-            {loading ? '…' : formatCurrency(totales.egresos)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Neto</p>
-          <p className="text-xl font-semibold" style={{ color: totales.neto >= 0 ? 'var(--paid)' : 'var(--debt)' }}>
-            {loading ? '…' : formatCurrency(totales.neto)}
-          </p>
-        </Card>
-      </div>
+      <Collapsible title="Balance">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Ingresos</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.ingresos)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Egresos</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--debt)' }}>
+              {loading ? '…' : formatCurrency(totales.egresos)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Neto</p>
+            <p className="text-xl font-semibold" style={{ color: totales.neto >= 0 ? 'var(--paid)' : 'var(--debt)' }}>
+              {loading ? '…' : formatCurrency(totales.neto)}
+            </p>
+          </Card>
+        </div>
+      </Collapsible>
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as FiltroTipo)} className="max-w-[160px]">
