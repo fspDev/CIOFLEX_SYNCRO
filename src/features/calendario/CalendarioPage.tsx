@@ -146,28 +146,31 @@ export function CalendarioPage() {
           if (day === null) return <div key={i} />
           const key = dateStr(year, month, day)
           const eventos = eventosPorDia.get(key) ?? []
-          const tieneEventos = eventos.length > 0
+          const grupos = agruparPorProyecto(eventos)
+          const tieneEventos = grupos.length > 0
+          const handleClickDia = () => {
+            // Un solo proyecto ese día: va directo al detalle. Dos o más: siempre el listado,
+            // sin importar en qué parte de la celda se clickee (incluidos los chips de evento).
+            if (grupos.length === 1) setSelected(grupos[0].proyecto)
+            else if (grupos.length > 1) setDiaSeleccionado(key)
+          }
           return (
             <Card
               key={i}
-              onClick={tieneEventos ? () => setDiaSeleccionado(key) : undefined}
+              onClick={tieneEventos ? handleClickDia : undefined}
               className={`p-1.5 min-h-[88px] flex flex-col gap-1 ${tieneEventos ? 'cursor-pointer hover:border-[var(--brand-500)]' : ''}`}
             >
               <span className="text-xs text-[var(--text-muted)]">{day}</span>
               <div className="flex flex-col gap-0.5 overflow-hidden">
                 {eventos.slice(0, 3).map((ev, idx) => (
-                  <button
+                  <span
                     key={idx}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelected(ev.proyecto)
-                    }}
                     className="text-[10px] truncate text-left px-1 py-0.5 rounded"
                     style={{ background: `${COLOR_TIPO[ev.tipo]}22`, color: COLOR_TIPO[ev.tipo] }}
                     title={`${ev.proyecto.nombre} — ${cliente(ev.proyecto.clienteId) ?? ''}`}
                   >
                     {ev.proyecto.nombre}
-                  </button>
+                  </span>
                 ))}
                 {eventos.length > 3 && <span className="text-[10px] text-[var(--text-muted)]">+{eventos.length - 3} más</span>}
               </div>
