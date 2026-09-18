@@ -3,19 +3,19 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input, Select } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
+import { SortToggle, type Orden } from '../../components/ui/SortToggle'
 import { listarClientes, listarPagosPorProyecto, listarProyectos } from '../../lib/repo'
 import { calcularBalanceProyecto, estadoPago, ESTADO_PAGO_COLOR, ESTADO_PAGO_LABEL } from '../../lib/balance'
-import {
-  estadoCronologico,
-  ESTADO_CRONOLOGICO_COLOR,
-  ESTADO_CRONOLOGICO_LABEL,
-  TIPO_SERVICIO_COLOR,
-  TIPO_SERVICIO_LABEL,
-} from '../../lib/proyectoEstado'
+import { diasDelProyecto, estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
 import { compareDateStr, formatCurrency, formatDate } from '../../lib/utils'
-import type { Cliente, EstadoComercialProyecto, PagoProyecto, Proyecto, TipoServicioProyecto } from '../../types'
+import type { Cliente, EstadoComercialProyecto, PagoProyecto, Proyecto } from '../../types'
 import { ProyectoFormModal } from './ProyectoFormModal'
 import { ProyectoDetailPanel } from './ProyectoDetailPanel'
+
+/** Primer día concreto del proyecto, sea de fases de armado o de días sueltos — para ordenar. */
+function primerDia(p: Proyecto): string {
+  return diasDelProyecto(p)[0] ?? '9999-12-31'
+}
 
 export function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
@@ -27,8 +27,9 @@ export function ProyectosPage() {
 
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroEstadoComercial, setFiltroEstadoComercial] = useState<EstadoComercialProyecto | ''>('')
-  const [filtroTipoServicio, setFiltroTipoServicio] = useState<TipoServicioProyecto | ''>('')
+  const [filtroTipoServicio, setFiltroTipoServicio] = useState('')
   const [busqueda, setBusqueda] = useState('')
+  const [orden, setOrden] = useState<Orden>('asc')
 
   async function reload() {
     setLoading(true)
@@ -44,14 +45,16 @@ export function ProyectosPage() {
     reload()
   }, [])
 
+  const tiposServicioUsados = useMemo(() => [...new Set(proyectos.map((p) => p.tipoServicio))].sort(), [proyectos])
+
   const filtrados = useMemo(() => {
     return proyectos
       .filter((p) => !filtroCliente || p.clienteId === filtroCliente)
       .filter((p) => !filtroEstadoComercial || p.estadoComercial === filtroEstadoComercial)
       .filter((p) => !filtroTipoServicio || p.tipoServicio === filtroTipoServicio)
       .filter((p) => !busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
-      .sort((a, b) => compareDateStr(a.fechaEventoInicio ?? '9999', b.fechaEventoInicio ?? '9999'))
-  }, [proyectos, filtroCliente, filtroEstadoComercial, filtroTipoServicio, busqueda])
+      .sort((a, b) => (orden === 'asc' ? compareDateStr(primerDia(a), primerDia(b)) : compareDateStr(primerDia(b), primerDia(a))))
+  }, [proyectos, filtroCliente, filtroEstadoComercial, filtroTipoServicio, busqueda, orden])
 
   const totales = useMemo(() => {
     return filtrados.reduce(
@@ -116,18 +119,15 @@ export function ProyectosPage() {
           <option value="confirmado">Confirmado</option>
           <option value="cancelado">Cancelado</option>
         </Select>
-        <Select
-          value={filtroTipoServicio}
-          onChange={(e) => setFiltroTipoServicio(e.target.value as TipoServicioProyecto | '')}
-          className="max-w-[200px]"
-        >
+        <Select value={filtroTipoServicio} onChange={(e) => setFiltroTipoServicio(e.target.value)} className="max-w-[200px]">
           <option value="">Todos los servicios</option>
-          {(Object.entries(TIPO_SERVICIO_LABEL) as [TipoServicioProyecto, string][]).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
+          {tiposServicioUsados.map((t) => (
+            <option key={t} value={t}>
+              {t}
             </option>
           ))}
         </Select>
+        <SortToggle orden={orden} onChange={setOrden} label="Fecha" />
       </div>
 
       {loading ? (
@@ -155,13 +155,22 @@ export function ProyectosPage() {
                       {cliente?.nombre ?? '—'} · {p.ubicacion}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] mt-1">
-                      {formatDate(p.fechaEventoInicio)}
-                      {p.fechaEventoFin ? ` – ${formatDate(p.fechaEventoFin)}` : ''}
+                      {p.diasTrabajo && p.diasTrabajo.length > 0 ? (
+                        <>
+                          {formatDate(primerDia(p))}
+                          {p.diasTrabajo.length > 1 ? ` (+${p.diasTrabajo.length - 1} día${p.diasTrabajo.length > 2 ? 's' : ''})` : ''}
+                        </>
+                      ) : (
+                        <>
+                          {formatDate(p.fechaEventoInicio)}
+                          {p.fechaEventoFin ? ` – ${formatDate(p.fechaEventoFin)}` : ''}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="flex gap-1.5">
-                      <Badge color={TIPO_SERVICIO_COLOR[p.tipoServicio]}>{TIPO_SERVICIO_LABEL[p.tipoServicio]}</Badge>
+                    <div className="flex gap-1.5 flex-wrap justify-end">
+                      <Badge color="var(--brand-500)">{p.tipoServicio}</Badge>
                       <Badge color={ESTADO_CRONOLOGICO_COLOR[cronologico]}>{ESTADO_CRONOLOGICO_LABEL[cronologico]}</Badge>
                       <Badge color={ESTADO_PAGO_COLOR[estado]}>{ESTADO_PAGO_LABEL[estado]}</Badge>
                     </div>

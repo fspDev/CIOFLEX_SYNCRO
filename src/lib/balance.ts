@@ -6,9 +6,13 @@ export interface BalanceEmpleado {
   saldoAdeudado: number
 }
 
-/** Ledger derivado: nunca se guarda un booleano/estado, siempre se calcula sumando. */
+/**
+ * Ledger derivado: nunca se guarda un booleano/estado, siempre se calcula sumando.
+ * Solo las jornadas validadas por un admin impactan en el balance — una jornada recién
+ * cargada por el empleado queda "pendiente" hasta que se revisa.
+ */
 export function calcularBalanceEmpleado(jornadas: Jornada[], pagos: PagoEmpleado[]): BalanceEmpleado {
-  const totalGenerado = jornadas.reduce((acc, j) => acc + j.montoTotal, 0)
+  const totalGenerado = jornadas.filter((j) => j.validada).reduce((acc, j) => acc + j.montoTotal, 0)
   const totalPagado = pagos.reduce((acc, p) => acc + p.monto, 0)
   return { totalGenerado, totalPagado, saldoAdeudado: totalGenerado - totalPagado }
 }

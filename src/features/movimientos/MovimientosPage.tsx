@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Input'
-import { eliminarMovimiento, listarMovimientos } from '../../lib/repo'
-import { formatCurrency, formatDate } from '../../lib/utils'
-import { CATEGORIAS_MOVIMIENTO } from '../../types'
+import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { eliminarMovimiento, listarMovimientos, obtenerCategoriasMovimiento } from '../../lib/repo'
+import { compareDateStr, formatCurrency, formatDate } from '../../lib/utils'
 import type { CategoriaMovimiento, MovimientoCaja, TipoMovimiento } from '../../types'
 import { MovimientoFormModal } from './MovimientoFormModal'
 
@@ -12,16 +12,20 @@ type FiltroTipo = 'todos' | TipoMovimiento
 
 export function MovimientosPage() {
   const [movimientos, setMovimientos] = useState<MovimientoCaja[]>([])
+  const [categorias, setCategorias] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<MovimientoCaja | undefined>(undefined)
 
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos')
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaMovimiento | ''>('')
+  const [orden, setOrden] = useState<Orden>('desc')
 
   async function reload() {
     setLoading(true)
-    setMovimientos(await listarMovimientos())
+    const [m, c] = await Promise.all([listarMovimientos(), obtenerCategoriasMovimiento()])
+    setMovimientos(m)
+    setCategorias(c)
     setLoading(false)
   }
 
@@ -33,7 +37,8 @@ export function MovimientosPage() {
     return movimientos
       .filter((m) => filtroTipo === 'todos' || m.tipo === filtroTipo)
       .filter((m) => !filtroCategoria || m.categoria === filtroCategoria)
-  }, [movimientos, filtroTipo, filtroCategoria])
+      .sort((a, b) => (orden === 'asc' ? compareDateStr(a.fecha, b.fecha) : compareDateStr(b.fecha, a.fecha)))
+  }, [movimientos, filtroTipo, filtroCategoria, orden])
 
   const totales = useMemo(() => {
     const ingresos = filtrados.filter((m) => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
@@ -97,12 +102,13 @@ export function MovimientosPage() {
           className="max-w-[200px]"
         >
           <option value="">Todas las categorías</option>
-          {CATEGORIAS_MOVIMIENTO.map((c) => (
+          {categorias.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
         </Select>
+        <SortToggle orden={orden} onChange={setOrden} label="Fecha" />
       </div>
 
       {loading ? (

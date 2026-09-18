@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { Field, Input, Select, Textarea } from '../../components/ui/Input'
 import { MontoInput } from '../../components/ui/MontoInput'
-import { actualizarMovimiento, crearMovimiento } from '../../lib/repo'
+import { actualizarMovimiento, crearMovimiento, obtenerCategoriasMovimiento } from '../../lib/repo'
 import { todayStr } from '../../lib/utils'
-import { CATEGORIAS_MOVIMIENTO } from '../../types'
 import type { CategoriaMovimiento, FormaPago, MovimientoCaja, TipoMovimiento } from '../../types'
 
 interface Props {
@@ -16,13 +15,23 @@ interface Props {
 }
 
 export function MovimientoFormModal({ open, onClose, onSaved, movimiento }: Props) {
+  const [categorias, setCategorias] = useState<string[]>([])
   const [tipo, setTipo] = useState<TipoMovimiento>(movimiento?.tipo ?? 'egreso')
-  const [categoria, setCategoria] = useState<CategoriaMovimiento>(movimiento?.categoria ?? 'Materiales')
+  const [categoria, setCategoria] = useState<CategoriaMovimiento>(movimiento?.categoria ?? '')
   const [descripcion, setDescripcion] = useState(movimiento?.descripcion ?? '')
   const [monto, setMonto] = useState(movimiento?.monto ?? 0)
   const [fecha, setFecha] = useState(movimiento?.fecha ?? todayStr())
   const [formaPago, setFormaPago] = useState<FormaPago>(movimiento?.formaPago ?? 'efectivo')
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    obtenerCategoriasMovimiento().then((cats) => {
+      setCategorias(cats)
+      if (!categoria && cats.length > 0) setCategoria(cats[0])
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -79,7 +88,7 @@ export function MovimientoFormModal({ open, onClose, onSaved, movimiento }: Prop
 
         <Field label="Categoría">
           <Select value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaMovimiento)}>
-            {CATEGORIAS_MOVIMIENTO.map((c) => (
+            {categorias.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

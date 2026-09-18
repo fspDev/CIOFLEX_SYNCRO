@@ -90,6 +90,9 @@ export function MisHorasPage() {
                   )}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
+                <p className="text-xs mt-0.5" style={{ color: j.validada ? 'var(--paid)' : 'var(--partial)' }}>
+                  {j.validada ? 'Validada' : 'Pendiente de validación'}
+                </p>
               </div>
               <p className="text-sm font-medium shrink-0">{formatCurrency(j.montoTotal)}</p>
             </Card>

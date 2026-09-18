@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './features/auth/LoginPage'
+import { InicioPage } from './features/inicio/InicioPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { EmpleadosPage } from './features/empleados/EmpleadosPage'
 import { ProyectosPage } from './features/proyectos/ProyectosPage'
@@ -13,6 +14,7 @@ import { MisProyectosPage } from './features/empleado-portal/MisProyectosPage'
 import { MisPagosPage } from './features/empleado-portal/MisPagosPage'
 import { AdministradoresPage } from './features/administradores/AdministradoresPage'
 import { MovimientosPage } from './features/movimientos/MovimientosPage'
+import { ConfiguracionPage } from './features/configuracion/ConfiguracionPage'
 
 function App() {
   const init = useAuthStore((s) => s.init)
@@ -42,12 +44,14 @@ function App() {
         <Route element={<AppLayout />}>
           {profile.rol === 'admin' || profile.rol === 'admin_supremo' ? (
             <>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<InicioPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/empleados" element={<EmpleadosPage />} />
               <Route path="/proyectos" element={<ProyectosPage />} />
               <Route path="/movimientos" element={<MovimientosPage />} />
               <Route path="/calendario" element={<CalendarioPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
+              <Route path="/configuracion" element={<ConfiguracionPage />} />
               {profile.rol === 'admin_supremo' && <Route path="/administradores" element={<AdministradoresPage />} />}
               <Route path="*" element={<Navigate to="/" replace />} />
             </>

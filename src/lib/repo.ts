@@ -5,24 +5,29 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { compareDateStr, monthStartOf, todayStr } from './utils'
-import type {
-  Cliente,
-  Empleado,
-  Jornada,
-  MovimientoCaja,
-  PagoEmpleado,
-  UserProfile,
-  PagoProyecto,
-  Proyecto,
-  TarifaEmpleado,
+import {
+  CATEGORIAS_MOVIMIENTO_DEFAULT,
+  TIPOS_SERVICIO_DEFAULT,
+  type Cliente,
+  type Empleado,
+  type Jornada,
+  type MovimientoCaja,
+  type PagoEmpleado,
+  type UserProfile,
+  type PagoProyecto,
+  type Proyecto,
+  type TarifaEmpleado,
+  type TipoServicioConfig,
 } from '../types'
 
 const col = (name: string) => collection(db, name)
@@ -90,9 +95,11 @@ export async function eliminarJornada(id: string) {
 }
 
 // Migración al vuelo: jornadas creadas antes de que existiera tipoPago se asumen 'hora'
-// (todo pago era por hora hasta entonces) — evita un script de migración aparte.
+// (todo pago era por hora hasta entonces). Jornadas creadas antes de que existiera la
+// validación del admin se asumen ya validadas (así no desaparece de golpe el balance
+// histórico) — evita un script de migración aparte.
 function normalizarJornada(id: string, data: Omit<Jornada, 'id'>): Jornada {
-  return { id, ...data, tipoPago: data.tipoPago ?? 'hora' }
+  return { id, ...data, tipoPago: data.tipoPago ?? 'hora', validada: data.validada ?? true }
 }
 
 export async function listarJornadasPorEmpleado(empleadoId: string): Promise<Jornada[]> {
@@ -104,6 +111,15 @@ export async function listarJornadasPorEmpleado(empleadoId: string): Promise<Jor
 export async function listarJornadasPorProyecto(proyectoId: string): Promise<Jornada[]> {
   const snap = await getDocs(query(col('jornadas'), where('proyectoId', '==', proyectoId)))
   return snap.docs.map((d) => normalizarJornada(d.id, d.data() as Omit<Jornada, 'id'>))
+}
+
+/** Solo impacta el balance del empleado una vez validada por un admin. */
+export async function validarJornada(id: string) {
+  await updateDoc(doc(db, 'jornadas', id), { validada: true, updatedAt: new Date().toISOString() })
+}
+
+export async function invalidarJornada(id: string) {
+  await updateDoc(doc(db, 'jornadas', id), { validada: false, updatedAt: new Date().toISOString() })
 }
 
 // ---------- Pagos a empleados ----------
@@ -125,12 +141,12 @@ export async function listarPagosPorEmpleado(empleadoId: string): Promise<PagoEm
 
 // ---------- Proyectos ----------
 
-// empleadosIds es un espejo de empleadosAsignados solo para que las reglas de Firestore y las
+// empleadosIds es un espejo de asignaciones solo para que las reglas de Firestore y las
 // queries puedan filtrar por empleado (ver comentario en el tipo Proyecto) — se recalcula acá
 // para que ningún llamador se olvide de mantenerlo sincronizado.
-function conEmpleadosIds<T extends { empleadosAsignados?: Proyecto['empleadosAsignados'] }>(data: T) {
-  if (!data.empleadosAsignados) return data
-  return { ...data, empleadosIds: data.empleadosAsignados.map((a) => a.empleadoId) }
+function conEmpleadosIds<T extends { asignaciones?: Proyecto['asignaciones'] }>(data: T) {
+  if (!data.asignaciones) return data
+  return { ...data, empleadosIds: [...new Set(data.asignaciones.map((a) => a.empleadoId))] }
 }
 
 export async function crearProyecto(data: Omit<Proyecto, 'id' | 'createdAt' | 'updatedAt' | 'empleadosIds'>) {
@@ -147,10 +163,40 @@ export async function eliminarProyecto(id: string) {
   await deleteDoc(doc(db, 'proyectos', id))
 }
 
-// Migración al vuelo: proyectos creados antes de que existiera tipoServicio se asumen 'armado'
-// (era el único servicio que ofrecía la empresa hasta entonces).
-function normalizarProyecto(id: string, data: Omit<Proyecto, 'id'>): Proyecto {
-  return { id, ...data, tipoServicio: data.tipoServicio ?? 'armado', empleadosIds: data.empleadosIds ?? [] }
+// Migración al vuelo: proyectos creados antes de que existiera tipoServicio se asumen 'Armado'
+// (era el único servicio que ofrecía la empresa hasta entonces); proyectos con el viejo
+// `empleadosAsignados` (una asignación para todo el proyecto, sin día) se migran a una sola
+// asignación "por día" repetida en cada día del proyecto, para no perder el dato.
+function normalizarProyecto(id: string, data: Omit<Proyecto, 'id'> & { empleadosAsignados?: { empleadoId: string; horaInicio?: string; horaFin?: string }[] }): Proyecto {
+  const { empleadosAsignados, ...resto } = data
+  let asignaciones = resto.asignaciones
+  if (!asignaciones && empleadosAsignados) {
+    const dias = diasDelProyectoInterno(resto)
+    asignaciones = dias.flatMap((fecha) => empleadosAsignados.map((a) => ({ fecha, ...a })))
+  }
+  return { id, ...resto, tipoServicio: resto.tipoServicio ?? 'Armado', asignaciones: asignaciones ?? [], empleadosIds: resto.empleadosIds ?? [] }
+}
+
+// Copia mínima de diasDelProyecto (sin importar de proyectoEstado.ts para evitar un ciclo de
+// módulos, ya que ese archivo no depende de repo.ts) — solo para la migración al vuelo de arriba.
+function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?: string; fechaEventoInicio?: string; fechaEventoFin?: string; fechaDesarmeInicio?: string; fechaDesarmeFin?: string }): string[] {
+  if (p.diasTrabajo && p.diasTrabajo.length > 0) return [...p.diasTrabajo].sort(compareDateStr)
+  const dias = new Set<string>()
+  function addRange(inicio?: string, fin?: string) {
+    if (!inicio) return
+    const [y1, m1, d1] = inicio.split('-').map(Number)
+    const [y2, m2, d2] = (fin ?? inicio).split('-').map(Number)
+    const cur = new Date(y1, m1 - 1, d1)
+    const end = new Date(y2, m2 - 1, d2)
+    while (cur <= end) {
+      dias.add(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`)
+      cur.setDate(cur.getDate() + 1)
+    }
+  }
+  addRange(p.fechaArmadoInicio, p.fechaArmadoInicio)
+  addRange(p.fechaEventoInicio, p.fechaEventoFin)
+  addRange(p.fechaDesarmeInicio, p.fechaDesarmeFin)
+  return [...dias].sort(compareDateStr)
 }
 
 export async function listarProyectos(): Promise<Proyecto[]> {
@@ -226,4 +272,39 @@ export async function listarMovimientos(): Promise<MovimientoCaja[]> {
   const snap = await getDocs(col('movimientos_caja'))
   const movimientos = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MovimientoCaja, 'id'>) }))
   return movimientos.sort((a, b) => compareDateStr(b.fecha, a.fecha))
+}
+
+// ---------- Proyectos por cliente (historial en la ficha del cliente) ----------
+
+export async function listarProyectosPorCliente(clienteId: string): Promise<Proyecto[]> {
+  const snap = await getDocs(query(col('proyectos'), where('clienteId', '==', clienteId)))
+  return snap.docs.map((d) => normalizarProyecto(d.id, d.data() as Omit<Proyecto, 'id'>))
+}
+
+// ---------- Configuración editable por el admin ----------
+// Un solo documento por cada tipo de configuración, en la colección `configuracion`.
+
+const CONFIG_TIPOS_SERVICIO_ID = 'tipos_servicio_proyecto'
+const CONFIG_CATEGORIAS_MOVIMIENTO_ID = 'categorias_movimiento'
+
+export async function obtenerTiposServicio(): Promise<TipoServicioConfig[]> {
+  const snap = await getDoc(doc(db, 'configuracion', CONFIG_TIPOS_SERVICIO_ID))
+  if (!snap.exists()) return TIPOS_SERVICIO_DEFAULT
+  const items = snap.data().items as TipoServicioConfig[] | undefined
+  return items && items.length > 0 ? items : TIPOS_SERVICIO_DEFAULT
+}
+
+export async function guardarTiposServicio(items: TipoServicioConfig[]) {
+  await setDoc(doc(db, 'configuracion', CONFIG_TIPOS_SERVICIO_ID), { items })
+}
+
+export async function obtenerCategoriasMovimiento(): Promise<string[]> {
+  const snap = await getDoc(doc(db, 'configuracion', CONFIG_CATEGORIAS_MOVIMIENTO_ID))
+  if (!snap.exists()) return CATEGORIAS_MOVIMIENTO_DEFAULT
+  const items = snap.data().items as string[] | undefined
+  return items && items.length > 0 ? items : CATEGORIAS_MOVIMIENTO_DEFAULT
+}
+
+export async function guardarCategoriasMovimiento(items: string[]) {
+  await setDoc(doc(db, 'configuracion', CONFIG_CATEGORIAS_MOVIMIENTO_ID), { items })
 }

@@ -5,12 +5,14 @@ import { Dropdown, DropdownItem, DropdownLabel } from '../ui/Dropdown'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 const ADMIN_TABS = [
-  { to: '/', label: 'Dashboard', end: true },
+  { to: '/', label: 'Inicio', end: true },
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/empleados', label: 'Empleados' },
   { to: '/proyectos', label: 'Proyectos' },
   { to: '/movimientos', label: 'Movimientos' },
   { to: '/calendario', label: 'Calendario' },
   { to: '/clientes', label: 'Clientes' },
+  { to: '/configuracion', label: 'Configuración' },
 ]
 
 const ADMIN_SUPREMO_TABS = [...ADMIN_TABS, { to: '/administradores', label: 'Administradores' }]
