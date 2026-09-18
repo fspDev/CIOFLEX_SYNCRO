@@ -12,6 +12,23 @@ function usuarioAEmail(usuario) {
   return `${usuario}@${EMPLEADO_LOGIN_DOMAIN}`
 }
 
+// Traduce errores de Firebase Auth a mensajes entendibles -- si no se reconoce el código,
+// se loguea el error real (para verlo en `firebase functions:log`) y se devuelve uno genérico,
+// para nunca dejar que una excepción sin capturar tire la función entera (eso da un 500 pelado
+// en el cliente, sin ningún mensaje útil).
+function relanzarErrorDeAuth(err, contexto) {
+  const mensajes = {
+    'auth/email-already-exists': 'Ya existe un usuario con ese nombre. Elegí otro.',
+    'auth/invalid-password': 'La contraseña no es válida (mínimo 6 caracteres).',
+    'auth/invalid-email': 'El usuario tiene caracteres inválidos.',
+    'auth/uid-already-exists': 'Ya existe una cuenta para ese empleado.',
+  }
+  const mensaje = mensajes[err?.code]
+  if (mensaje) throw new HttpsError('invalid-argument', mensaje)
+  console.error(`Error inesperado en ${contexto}:`, err)
+  throw new HttpsError('internal', 'Ocurrió un error inesperado. Volvé a intentar en un momento.')
+}
+
 async function requireCallerRol(request, allowedRoles, mensaje) {
   const callerUid = request.auth?.uid
   if (!callerUid) throw new HttpsError('unauthenticated', 'Necesitás estar logueado.')
@@ -56,16 +73,21 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
   const email = usuarioAEmail(usuario)
 
   let userRecord
-  if (empleado.authUid) {
-    // Ya tenía cuenta: actualiza el usuario y, si se mandó una nueva, también la contraseña.
-    const updates = { email }
-    if (password) updates.password = password
-    userRecord = await auth.updateUser(empleado.authUid, updates)
-  } else {
-    if (!password) {
-      throw new HttpsError('invalid-argument', 'La contraseña es requerida para generar el primer acceso.')
+  try {
+    if (empleado.authUid) {
+      // Ya tenía cuenta: actualiza el usuario y, si se mandó una nueva, también la contraseña.
+      const updates = { email }
+      if (password) updates.password = password
+      userRecord = await auth.updateUser(empleado.authUid, updates)
+    } else {
+      if (!password) {
+        throw new HttpsError('invalid-argument', 'La contraseña es requerida para generar el primer acceso.')
+      }
+      userRecord = await auth.createUser({ email, password, displayName: `${empleado.nombre} ${empleado.apellido}` })
     }
-    userRecord = await auth.createUser({ email, password, displayName: `${empleado.nombre} ${empleado.apellido}` })
+  } catch (err) {
+    if (err instanceof HttpsError) throw err
+    relanzarErrorDeAuth(err, 'crearAccesoEmpleado')
   }
 
   await db.doc(`users/${userRecord.uid}`).set({
@@ -102,13 +124,18 @@ exports.crearAccesoAdmin = onCall(async (request) => {
   }
 
   let userRecord
-  if (uid) {
-    const update = { email, displayName: nombre }
-    if (password) update.password = password
-    userRecord = await auth.updateUser(uid, update)
-  } else {
-    if (!password) throw new HttpsError('invalid-argument', 'La contraseña es requerida para un admin nuevo.')
-    userRecord = await auth.createUser({ email, password, displayName: nombre })
+  try {
+    if (uid) {
+      const update = { email, displayName: nombre }
+      if (password) update.password = password
+      userRecord = await auth.updateUser(uid, update)
+    } else {
+      if (!password) throw new HttpsError('invalid-argument', 'La contraseña es requerida para un admin nuevo.')
+      userRecord = await auth.createUser({ email, password, displayName: nombre })
+    }
+  } catch (err) {
+    if (err instanceof HttpsError) throw err
+    relanzarErrorDeAuth(err, 'crearAccesoAdmin')
   }
 
   await db.doc(`users/${userRecord.uid}`).set(

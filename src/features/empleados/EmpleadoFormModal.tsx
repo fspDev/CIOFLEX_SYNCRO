@@ -7,6 +7,7 @@ import { PasswordInput } from '../../components/ui/PasswordInput'
 import { actualizarEmpleado, crearEmpleado } from '../../lib/repo'
 import { functions } from '../../lib/firebase'
 import { normalizarUsuario } from '../../lib/auth'
+import { mensajeError } from '../../lib/utils'
 import type { Empleado } from '../../types'
 
 interface Props {
@@ -89,8 +90,11 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
         try {
           const crearAccesoEmpleado = httpsCallable(functions, 'crearAccesoEmpleado')
           await crearAccesoEmpleado({ empleadoId, usuario: normalizarUsuario(usuario), password: password.trim() })
-        } catch {
-          setError('El empleado se creó, pero no se pudo generar su acceso. Podés generarlo después desde el menú de 3 puntos.')
+        } catch (err) {
+          const detalle = mensajeError(err, '')
+          setError(
+            `El empleado se creó, pero no se pudo generar su acceso${detalle ? `: ${detalle}` : ''}. Podés generarlo después desde el menú de 3 puntos.`,
+          )
           setSaving(false)
           return
         }

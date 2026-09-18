@@ -6,7 +6,7 @@ import { Field, Input } from '../../components/ui/Input'
 import { PasswordInput } from '../../components/ui/PasswordInput'
 import { functions } from '../../lib/firebase'
 import { normalizarUsuario } from '../../lib/auth'
-import { copiarAlPortapapeles, textoAccesoEmpleado } from '../../lib/utils'
+import { copiarAlPortapapeles, mensajeError, textoAccesoEmpleado } from '../../lib/utils'
 import type { Empleado } from '../../types'
 
 interface Props {
@@ -47,8 +47,8 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
       })
       setResultado({ usuario: usuarioNormalizado, password: passwordFinal || empleado.passwordActual || '' })
       onSaved()
-    } catch {
-      setError('No se pudo generar el acceso. Verificá que las Cloud Functions estén deployadas.')
+    } catch (err) {
+      setError(mensajeError(err, 'No se pudo generar el acceso. Verificá que las Cloud Functions estén deployadas.'))
     } finally {
       setSaving(false)
     }

@@ -95,6 +95,19 @@ export function textoInfoEmpleado(empleado: Empleado): string {
   ].join('\n')
 }
 
+/**
+ * Mensaje legible de un error de Cloud Function callable (httpsCallable) — las Functions
+ * devuelven un HttpsError cuyo `.message` es el texto pensado para mostrar al usuario. Si el
+ * error no tiene esa forma (ej. sin conexión), se usa el mensaje genérico de respaldo.
+ */
+export function mensajeError(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'message' in err) {
+    const mensaje = (err as { message?: unknown }).message
+    if (typeof mensaje === 'string' && mensaje) return mensaje
+  }
+  return fallback
+}
+
 /** Copia al portapapeles; devuelve si funcionó (puede fallar en contextos sin permiso/HTTPS). */
 export async function copiarAlPortapapeles(texto: string): Promise<boolean> {
   try {
