@@ -3,13 +3,7 @@ import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { useAuthStore } from '../../store/authStore'
 import { listarClientes, listarProyectosPorEmpleado } from '../../lib/repo'
-import {
-  estadoCronologico,
-  ESTADO_CRONOLOGICO_COLOR,
-  ESTADO_CRONOLOGICO_LABEL,
-  TIPO_SERVICIO_COLOR,
-  TIPO_SERVICIO_LABEL,
-} from '../../lib/proyectoEstado'
+import { estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
 import { formatDate } from '../../lib/utils'
 import type { Cliente, Proyecto } from '../../types'
 
@@ -52,7 +46,9 @@ export function MisProyectosPage() {
           {proyectos.map((p) => {
             const cliente = clientes.find((c) => c.id === p.clienteId)
             const cronologico = estadoCronologico(p)
-            const miAsignacion = p.empleadosAsignados.find((a) => a.empleadoId === empleadoId)
+            const misDias = (p.asignaciones ?? [])
+              .filter((a) => a.empleadoId === empleadoId)
+              .sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
             return (
               <Card key={p.id} className="p-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -63,36 +59,46 @@ export function MisProyectosPage() {
                     </p>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <Badge color={TIPO_SERVICIO_COLOR[p.tipoServicio]}>{TIPO_SERVICIO_LABEL[p.tipoServicio]}</Badge>
+                    <Badge color="var(--brand-500)">{p.tipoServicio}</Badge>
                     <Badge color={ESTADO_CRONOLOGICO_COLOR[cronologico]}>{ESTADO_CRONOLOGICO_LABEL[cronologico]}</Badge>
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-[var(--text-muted)] mb-0.5">Armado</p>
-                    <p>{formatDate(p.fechaArmadoInicio)}</p>
+                {p.diasTrabajo && p.diasTrabajo.length > 0 ? (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)] text-sm">
+                    <p className="text-xs text-[var(--text-muted)] mb-0.5">Días de trabajo</p>
+                    <p>{p.diasTrabajo.map((d) => formatDate(d)).join(', ')}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-[var(--text-muted)] mb-0.5">Evento</p>
-                    <p>
-                      {formatDate(p.fechaEventoInicio)}
-                      {p.fechaEventoFin ? ` – ${formatDate(p.fechaEventoFin)}` : ''}
-                    </p>
+                ) : (
+                  <div className="mt-3 pt-3 border-t border-[var(--border)] grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-[var(--text-muted)] mb-0.5">Armado</p>
+                      <p>{formatDate(p.fechaArmadoInicio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--text-muted)] mb-0.5">Evento</p>
+                      <p>
+                        {formatDate(p.fechaEventoInicio)}
+                        {p.fechaEventoFin ? ` – ${formatDate(p.fechaEventoFin)}` : ''}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-[var(--text-muted)] mb-0.5">Desarme</p>
+                      <p>{formatDate(p.fechaDesarmeInicio)}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-[var(--text-muted)] mb-0.5">Desarme</p>
-                    <p>{formatDate(p.fechaDesarmeInicio)}</p>
-                  </div>
-                </div>
+                )}
 
-                {miAsignacion?.horaInicio && miAsignacion?.horaFin && (
-                  <p className="mt-2 text-sm">
-                    <span className="text-[var(--text-muted)]">Tu horario: </span>
-                    <span className="font-medium">
-                      {miAsignacion.horaInicio}–{miAsignacion.horaFin}
-                    </span>
-                  </p>
+                {misDias.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-[var(--text-muted)]">Tus días y horarios:</p>
+                    {misDias.map((a, idx) => (
+                      <p key={idx} className="text-sm">
+                        <span className="font-medium">{formatDate(a.fecha)}</span>
+                        {a.horaInicio && a.horaFin && <span className="text-[var(--text-muted)]"> · {a.horaInicio}–{a.horaFin}</span>}
+                      </p>
+                    ))}
+                  </div>
                 )}
 
                 {p.notas && <p className="mt-2 text-sm text-[var(--text-muted)]">{p.notas}</p>}

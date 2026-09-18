@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { Field, Input, Select, Textarea } from '../../components/ui/Input'
 import { MontoInput } from '../../components/ui/MontoInput'
-import { actualizarProyecto, crearProyecto, listarClientes, listarEmpleados } from '../../lib/repo'
-import { nombreCompleto, todayStr } from '../../lib/utils'
-import { TIPO_SERVICIO_LABEL } from '../../lib/proyectoEstado'
-import type { Cliente, Empleado, EmpleadoAsignado, EstadoComercialProyecto, Proyecto, TipoServicioProyecto } from '../../types'
+import { actualizarProyecto, crearProyecto, listarClientes, listarEmpleados, obtenerTiposServicio } from '../../lib/repo'
+import { diasDeFasesArmado } from '../../lib/proyectoEstado'
+import { formatDate, nombreCompleto, todayStr } from '../../lib/utils'
+import type { AsignacionDia, Cliente, Empleado, EstadoComercialProyecto, Proyecto, TipoServicioConfig } from '../../types'
 
 interface Props {
   open: boolean
@@ -19,38 +19,63 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
   const [nombre, setNombre] = useState(proyecto?.nombre ?? '')
   const [ubicacion, setUbicacion] = useState(proyecto?.ubicacion ?? '')
   const [clienteId, setClienteId] = useState(proyecto?.clienteId ?? '')
-  const [tipoServicio, setTipoServicio] = useState<TipoServicioProyecto>(proyecto?.tipoServicio ?? 'armado')
   const [estadoComercial, setEstadoComercial] = useState<EstadoComercialProyecto>(proyecto?.estadoComercial ?? 'negociacion')
+  const [tipoServicio, setTipoServicio] = useState(proyecto?.tipoServicio ?? '')
   const [fechaArmadoInicio, setFechaArmadoInicio] = useState(proyecto?.fechaArmadoInicio ?? '')
   const [fechaEventoInicio, setFechaEventoInicio] = useState(proyecto?.fechaEventoInicio ?? todayStr())
   const [fechaEventoFin, setFechaEventoFin] = useState(proyecto?.fechaEventoFin ?? '')
   const [fechaDesarmeInicio, setFechaDesarmeInicio] = useState(proyecto?.fechaDesarmeInicio ?? '')
   const [fechaDesarmeFin, setFechaDesarmeFin] = useState(proyecto?.fechaDesarmeFin ?? '')
+  const [diasTrabajo, setDiasTrabajo] = useState<string[]>(proyecto?.diasTrabajo ?? [])
+  const [nuevoDia, setNuevoDia] = useState(todayStr())
   const [presupuesto, setPresupuesto] = useState(proyecto?.presupuesto ?? 0)
   const [notas, setNotas] = useState(proyecto?.notas ?? '')
-  const [asignados, setAsignados] = useState<EmpleadoAsignado[]>(proyecto?.empleadosAsignados ?? [])
+  const [asignaciones, setAsignaciones] = useState<AsignacionDia[]>(proyecto?.asignaciones ?? [])
 
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [empleados, setEmpleados] = useState<Empleado[]>([])
+  const [tiposServicio, setTiposServicio] = useState<TipoServicioConfig[]>([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (open) {
       listarClientes().then(setClientes)
       listarEmpleados().then(setEmpleados)
+      obtenerTiposServicio().then((tipos) => {
+        setTiposServicio(tipos)
+        if (!tipoServicio && tipos.length > 0) setTipoServicio(tipos[0].nombre)
+      })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  function toggleEmpleado(empleadoId: string) {
-    setAsignados((prev) =>
-      prev.some((a) => a.empleadoId === empleadoId)
-        ? prev.filter((a) => a.empleadoId !== empleadoId)
-        : [...prev, { empleadoId, horaInicio: '', horaFin: '' }],
-    )
+  const tipoSeleccionado = tiposServicio.find((t) => t.nombre === tipoServicio)
+  const usaFasesArmado = tipoSeleccionado?.usaFasesArmado ?? true
+
+  const diasDelTrabajo = useMemo(() => {
+    if (usaFasesArmado) {
+      return diasDeFasesArmado({ fechaArmadoInicio, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin })
+    }
+    return [...diasTrabajo].sort()
+  }, [usaFasesArmado, fechaArmadoInicio, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin, diasTrabajo])
+
+  function handleAgregarDia() {
+    if (!nuevoDia || diasTrabajo.includes(nuevoDia)) return
+    setDiasTrabajo((prev) => [...prev, nuevoDia].sort())
   }
 
-  function setHorario(empleadoId: string, field: 'horaInicio' | 'horaFin', value: string) {
-    setAsignados((prev) => prev.map((a) => (a.empleadoId === empleadoId ? { ...a, [field]: value } : a)))
+  function handleQuitarDia(dia: string) {
+    setDiasTrabajo((prev) => prev.filter((d) => d !== dia))
+    setAsignaciones((prev) => prev.filter((a) => a.fecha !== dia))
+  }
+
+  function handleAgregarAsignacion(fecha: string, empleadoId: string, horaInicio: string, horaFin: string) {
+    if (!empleadoId) return
+    setAsignaciones((prev) => [...prev, { fecha, empleadoId, horaInicio: horaInicio || undefined, horaFin: horaFin || undefined }])
+  }
+
+  function handleQuitarAsignacion(index: number) {
+    setAsignaciones((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,16 +85,17 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
       nombre,
       ubicacion,
       clienteId,
-      tipoServicio,
       estadoComercial,
-      fechaArmadoInicio: fechaArmadoInicio || undefined,
-      fechaEventoInicio: fechaEventoInicio || undefined,
-      fechaEventoFin: fechaEventoFin || undefined,
-      fechaDesarmeInicio: fechaDesarmeInicio || undefined,
-      fechaDesarmeFin: fechaDesarmeFin || undefined,
+      tipoServicio,
+      fechaArmadoInicio: usaFasesArmado ? fechaArmadoInicio || undefined : undefined,
+      fechaEventoInicio: usaFasesArmado ? fechaEventoInicio || undefined : undefined,
+      fechaEventoFin: usaFasesArmado ? fechaEventoFin || undefined : undefined,
+      fechaDesarmeInicio: usaFasesArmado ? fechaDesarmeInicio || undefined : undefined,
+      fechaDesarmeFin: usaFasesArmado ? fechaDesarmeFin || undefined : undefined,
+      diasTrabajo: usaFasesArmado ? undefined : diasTrabajo,
       presupuesto,
       notas: notas || undefined,
-      empleadosAsignados: asignados,
+      asignaciones: asignaciones.filter((a) => diasDelTrabajo.includes(a.fecha)),
     }
     try {
       if (proyecto) {
@@ -96,7 +122,7 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Field label="Cliente">
             <Select value={clienteId} onChange={(e) => setClienteId(e.target.value)} required>
               <option value="">Seleccionar…</option>
@@ -108,82 +134,97 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
             </Select>
           </Field>
           <Field label="Tipo de servicio">
-            <Select value={tipoServicio} onChange={(e) => setTipoServicio(e.target.value as TipoServicioProyecto)}>
-              {(Object.entries(TIPO_SERVICIO_LABEL) as [TipoServicioProyecto, string][]).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
+            <Select value={tipoServicio} onChange={(e) => setTipoServicio(e.target.value)} required>
+              {tiposServicio.map((t) => (
+                <option key={t.nombre} value={t.nombre}>
+                  {t.nombre}
                 </option>
               ))}
             </Select>
           </Field>
-        </div>
-
-        <Field label="Estado comercial">
-          <Select value={estadoComercial} onChange={(e) => setEstadoComercial(e.target.value as EstadoComercialProyecto)}>
-            <option value="negociacion">Negociación</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="cancelado">Cancelado</option>
-          </Select>
-        </Field>
-
-        <p className="text-xs font-medium text-[var(--text-muted)] pt-1">Fechas</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Armado (inicio)">
-            <Input type="date" value={fechaArmadoInicio} onChange={(e) => setFechaArmadoInicio(e.target.value)} />
-          </Field>
-          <div />
-          <Field label="Evento (inicio)">
-            <Input type="date" value={fechaEventoInicio} onChange={(e) => setFechaEventoInicio(e.target.value)} required />
-          </Field>
-          <Field label="Evento (fin)">
-            <Input type="date" value={fechaEventoFin} onChange={(e) => setFechaEventoFin(e.target.value)} />
-          </Field>
-          <Field label="Desarme (inicio)">
-            <Input type="date" value={fechaDesarmeInicio} onChange={(e) => setFechaDesarmeInicio(e.target.value)} />
-          </Field>
-          <Field label="Desarme (fin)">
-            <Input type="date" value={fechaDesarmeFin} onChange={(e) => setFechaDesarmeFin(e.target.value)} />
+          <Field label="Estado comercial">
+            <Select value={estadoComercial} onChange={(e) => setEstadoComercial(e.target.value as EstadoComercialProyecto)}>
+              <option value="negociacion">Negociación</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="cancelado">Cancelado</option>
+            </Select>
           </Field>
         </div>
+
+        {usaFasesArmado ? (
+          <>
+            <p className="text-xs font-medium text-[var(--text-muted)] pt-1">Fechas por fase</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Armado (inicio)">
+                <Input type="date" value={fechaArmadoInicio} onChange={(e) => setFechaArmadoInicio(e.target.value)} />
+              </Field>
+              <div />
+              <Field label="Evento (inicio)">
+                <Input type="date" value={fechaEventoInicio} onChange={(e) => setFechaEventoInicio(e.target.value)} required />
+              </Field>
+              <Field label="Evento (fin)">
+                <Input type="date" value={fechaEventoFin} onChange={(e) => setFechaEventoFin(e.target.value)} />
+              </Field>
+              <Field label="Desarme (inicio)">
+                <Input type="date" value={fechaDesarmeInicio} onChange={(e) => setFechaDesarmeInicio(e.target.value)} />
+              </Field>
+              <Field label="Desarme (fin)">
+                <Input type="date" value={fechaDesarmeFin} onChange={(e) => setFechaDesarmeFin(e.target.value)} />
+              </Field>
+            </div>
+          </>
+        ) : (
+          <div>
+            <p className="text-xs font-medium text-[var(--text-muted)] mb-2">
+              Días de trabajo (no necesariamente consecutivos)
+            </p>
+            <div className="flex gap-2 mb-2">
+              <Input type="date" value={nuevoDia} onChange={(e) => setNuevoDia(e.target.value)} />
+              <Button type="button" variant="secondary" onClick={handleAgregarDia}>
+                + Agregar día
+              </Button>
+            </div>
+            {diasTrabajo.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">Todavía no agregaste ningún día.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {diasTrabajo.map((d) => (
+                  <span key={d} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--surface-2)] text-sm">
+                    {formatDate(d)}
+                    <button type="button" onClick={() => handleQuitarDia(d)} className="text-[var(--text-muted)] hover:text-red-400">
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <Field label="Presupuesto">
           <MontoInput value={presupuesto} onChange={setPresupuesto} />
         </Field>
 
         <div>
-          <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Empleados asignados</p>
-          <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] max-h-56 overflow-y-auto">
-            {empleados.map((emp) => {
-              const asignado = asignados.find((a) => a.empleadoId === emp.id)
-              return (
-                <div key={emp.id} className="p-2.5 flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={!!asignado}
-                    onChange={() => toggleEmpleado(emp.id)}
-                    className="w-4 h-4 shrink-0"
-                  />
-                  <span className="text-sm flex-1 min-w-0 truncate">{nombreCompleto(emp.nombre, emp.apellido)}</span>
-                  {asignado && (
-                    <div className="flex gap-1 shrink-0">
-                      <input
-                        type="time"
-                        value={asignado.horaInicio ?? ''}
-                        onChange={(e) => setHorario(emp.id, 'horaInicio', e.target.value)}
-                        className="px-1.5 py-1 rounded bg-[var(--surface-2)] border border-[var(--border)] text-xs w-24"
-                      />
-                      <input
-                        type="time"
-                        value={asignado.horaFin ?? ''}
-                        onChange={(e) => setHorario(emp.id, 'horaFin', e.target.value)}
-                        className="px-1.5 py-1 rounded bg-[var(--surface-2)] border border-[var(--border)] text-xs w-24"
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <p className="text-xs font-medium text-[var(--text-muted)] mb-2">Empleados asignados por día</p>
+          {diasDelTrabajo.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)]">
+              Cargá {usaFasesArmado ? 'las fechas' : 'los días de trabajo'} para poder asignar empleados.
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {diasDelTrabajo.map((dia) => (
+                <DiaAsignacion
+                  key={dia}
+                  dia={dia}
+                  empleados={empleados}
+                  asignaciones={asignaciones}
+                  onAgregar={(empleadoId, horaInicio, horaFin) => handleAgregarAsignacion(dia, empleadoId, horaInicio, horaFin)}
+                  onQuitar={handleQuitarAsignacion}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <Field label="Notas">
@@ -200,5 +241,89 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
         </div>
       </form>
     </Modal>
+  )
+}
+
+function DiaAsignacion({
+  dia,
+  empleados,
+  asignaciones,
+  onAgregar,
+  onQuitar,
+}: {
+  dia: string
+  empleados: Empleado[]
+  asignaciones: AsignacionDia[]
+  onAgregar: (empleadoId: string, horaInicio: string, horaFin: string) => void
+  onQuitar: (indexGlobal: number) => void
+}) {
+  const [empleadoId, setEmpleadoId] = useState('')
+  const [horaInicio, setHoraInicio] = useState('')
+  const [horaFin, setHoraFin] = useState('')
+
+  const asignacionesDelDia = asignaciones.map((a, index) => ({ ...a, index })).filter((a) => a.fecha === dia)
+  const empleadosDisponibles = empleados.filter((e) => !asignacionesDelDia.some((a) => a.empleadoId === e.id))
+
+  function handleAgregar() {
+    if (!empleadoId) return
+    onAgregar(empleadoId, horaInicio, horaFin)
+    setEmpleadoId('')
+    setHoraInicio('')
+    setHoraFin('')
+  }
+
+  return (
+    <div className="border border-[var(--border)] rounded-lg p-3">
+      <p className="text-sm font-medium mb-2">{formatDate(dia)}</p>
+      {asignacionesDelDia.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {asignacionesDelDia.map((a) => {
+            const emp = empleados.find((e) => e.id === a.empleadoId)
+            return (
+              <div key={a.index} className="flex items-center justify-between text-sm bg-[var(--surface-2)] rounded-lg px-2.5 py-1.5">
+                <span className="truncate">{emp ? nombreCompleto(emp.nombre, emp.apellido) : 'Empleado eliminado'}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {a.horaInicio && a.horaFin && (
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {a.horaInicio}–{a.horaFin}
+                    </span>
+                  )}
+                  <button type="button" onClick={() => onQuitar(a.index)} className="text-[var(--text-muted)] hover:text-red-400">
+                    ×
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {empleadosDisponibles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          <Select value={empleadoId} onChange={(e) => setEmpleadoId(e.target.value)} className="flex-1 min-w-[140px] !py-1.5 text-xs">
+            <option value="">+ Agregar empleado…</option>
+            {empleadosDisponibles.map((e) => (
+              <option key={e.id} value={e.id}>
+                {nombreCompleto(e.nombre, e.apellido)}
+              </option>
+            ))}
+          </Select>
+          <input
+            type="time"
+            value={horaInicio}
+            onChange={(e) => setHoraInicio(e.target.value)}
+            className="px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border-[1.5px] border-[var(--input-border)] text-xs w-24"
+          />
+          <input
+            type="time"
+            value={horaFin}
+            onChange={(e) => setHoraFin(e.target.value)}
+            className="px-2 py-1.5 rounded-lg bg-[var(--surface-2)] border-[1.5px] border-[var(--input-border)] text-xs w-24"
+          />
+          <Button type="button" variant="secondary" onClick={handleAgregar} disabled={!empleadoId}>
+            +
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }

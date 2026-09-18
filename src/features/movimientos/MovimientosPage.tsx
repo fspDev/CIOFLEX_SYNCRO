@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Input'
-import { eliminarMovimiento, listarMovimientos } from '../../lib/repo'
-import { formatCurrency, formatDate } from '../../lib/utils'
-import { CATEGORIAS_MOVIMIENTO } from '../../types'
+import { SortToggle, type Orden } from '../../components/ui/SortToggle'
+import { Collapsible } from '../../components/ui/Collapsible'
+import { eliminarMovimiento, listarMovimientos, obtenerCategoriasMovimiento } from '../../lib/repo'
+import { compareDateStr, formatCurrency, formatDate } from '../../lib/utils'
 import type { CategoriaMovimiento, MovimientoCaja, TipoMovimiento } from '../../types'
 import { MovimientoFormModal } from './MovimientoFormModal'
 
@@ -12,16 +13,20 @@ type FiltroTipo = 'todos' | TipoMovimiento
 
 export function MovimientosPage() {
   const [movimientos, setMovimientos] = useState<MovimientoCaja[]>([])
+  const [categorias, setCategorias] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<MovimientoCaja | undefined>(undefined)
 
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos')
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaMovimiento | ''>('')
+  const [orden, setOrden] = useState<Orden>('desc')
 
   async function reload() {
     setLoading(true)
-    setMovimientos(await listarMovimientos())
+    const [m, c] = await Promise.all([listarMovimientos(), obtenerCategoriasMovimiento()])
+    setMovimientos(m)
+    setCategorias(c)
     setLoading(false)
   }
 
@@ -33,7 +38,8 @@ export function MovimientosPage() {
     return movimientos
       .filter((m) => filtroTipo === 'todos' || m.tipo === filtroTipo)
       .filter((m) => !filtroCategoria || m.categoria === filtroCategoria)
-  }, [movimientos, filtroTipo, filtroCategoria])
+      .sort((a, b) => (orden === 'asc' ? compareDateStr(a.fecha, b.fecha) : compareDateStr(b.fecha, a.fecha)))
+  }, [movimientos, filtroTipo, filtroCategoria, orden])
 
   const totales = useMemo(() => {
     const ingresos = filtrados.filter((m) => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
@@ -64,26 +70,28 @@ export function MovimientosPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Ingresos</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
-            {loading ? '…' : formatCurrency(totales.ingresos)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Egresos</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--debt)' }}>
-            {loading ? '…' : formatCurrency(totales.egresos)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Neto</p>
-          <p className="text-xl font-semibold" style={{ color: totales.neto >= 0 ? 'var(--paid)' : 'var(--debt)' }}>
-            {loading ? '…' : formatCurrency(totales.neto)}
-          </p>
-        </Card>
-      </div>
+      <Collapsible title="Balance">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Ingresos</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+              {loading ? '…' : formatCurrency(totales.ingresos)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Egresos</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--debt)' }}>
+              {loading ? '…' : formatCurrency(totales.egresos)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Neto</p>
+            <p className="text-xl font-semibold" style={{ color: totales.neto >= 0 ? 'var(--paid)' : 'var(--debt)' }}>
+              {loading ? '…' : formatCurrency(totales.neto)}
+            </p>
+          </Card>
+        </div>
+      </Collapsible>
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as FiltroTipo)} className="max-w-[160px]">
@@ -97,12 +105,13 @@ export function MovimientosPage() {
           className="max-w-[200px]"
         >
           <option value="">Todas las categorías</option>
-          {CATEGORIAS_MOVIMIENTO.map((c) => (
+          {categorias.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
           ))}
         </Select>
+        <SortToggle orden={orden} onChange={setOrden} label="Fecha" />
       </div>
 
       {loading ? (

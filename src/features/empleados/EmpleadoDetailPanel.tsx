@@ -2,20 +2,24 @@ import { useEffect, useState } from 'react'
 import { SlidePanel } from '../../components/ui/SlidePanel'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Collapsible } from '../../components/ui/Collapsible'
+import { SortToggle, type Orden } from '../../components/ui/SortToggle'
 import {
   actualizarEmpleado,
   eliminarEmpleado,
   listarJornadasPorEmpleado,
   listarPagosPorEmpleado,
   listarTarifas,
+  validarJornada,
 } from '../../lib/repo'
 import { calcularBalanceEmpleado } from '../../lib/balance'
-import { copiarAlPortapapeles, formatCurrency, formatDate, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
+import { compareDateStr, copiarAlPortapapeles, formatCurrency, formatDate, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
 import type { Empleado, Jornada, PagoEmpleado, TarifaEmpleado } from '../../types'
 import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
 import { TarifaFormModal } from './TarifaFormModal'
 import { GenerarAccesoModal } from './GenerarAccesoModal'
+import { DiasTrabajadosModal } from './DiasTrabajadosModal'
 
 interface Props {
   empleado: Empleado
@@ -33,7 +37,10 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
   const [showAcceso, setShowAcceso] = useState(false)
+  const [showCalendario, setShowCalendario] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [ordenPagos, setOrdenPagos] = useState<Orden>('desc')
+  const [ordenJornadas, setOrdenJornadas] = useState<Orden>('desc')
 
   async function reload() {
     setLoading(true)
@@ -55,6 +62,13 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
 
   const balance = calcularBalanceEmpleado(jornadas, pagos)
   const tarifaActual = [...tarifas].sort((a, b) => (a.vigenteDesde < b.vigenteDesde ? 1 : -1))[0]
+  const pendientesDeValidar = jornadas.filter((j) => !j.validada).length
+  const pagosOrdenados = [...pagos].sort((a, b) =>
+    ordenPagos === 'asc' ? compareDateStr(a.fecha, b.fecha) : compareDateStr(b.fecha, a.fecha),
+  )
+  const jornadasOrdenadas = [...jornadas].sort((a, b) =>
+    ordenJornadas === 'asc' ? compareDateStr(a.fecha, b.fecha) : compareDateStr(b.fecha, a.fecha),
+  )
 
   async function handleEliminar() {
     if (!confirm(`¿Eliminar a ${nombreCompleto(empleado.nombre, empleado.apellido)}? Esta acción no se puede deshacer.`)) return
@@ -77,6 +91,11 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
     }
   }
 
+  async function handleValidar(id: string) {
+    await validarJornada(id)
+    reload()
+  }
+
   return (
     <SlidePanel open onClose={onClose} title={nombreCompleto(empleado.nombre, empleado.apellido)}>
       <div className="space-y-6">
@@ -91,7 +110,15 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
               )}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap justify-end">
+          <div className="flex gap-2 flex-wrap justify-end items-center">
+            <button
+              type="button"
+              onClick={() => setShowCalendario(true)}
+              title="Ver días trabajados"
+              className="w-9 h-9 flex items-center justify-center rounded-lg border-[1.5px] border-[var(--input-border)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)] transition-colors shrink-0"
+            >
+              📅
+            </button>
             {empleado.authUid && empleado.passwordActual && (
               <Button variant="secondary" onClick={handleCopiarAcceso}>
                 {copiado ? 'Copiado ✓' : 'Copiar acceso'}
@@ -125,32 +152,68 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
           )}
         </Card>
 
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
-            <p className="font-semibold">{formatCurrency(balance.totalGenerado)}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
-            <p className="font-semibold" style={{ color: 'var(--paid)' }}>
-              {formatCurrency(balance.totalPagado)}
-            </p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
-            <p className="font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-              {formatCurrency(balance.saldoAdeudado)}
-            </p>
-          </Card>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-sm">Jornadas</h3>
-            <Button variant="secondary" onClick={() => setShowJornada(true)}>
-              + Cargar jornada
-            </Button>
+        <Collapsible title="Balance">
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
+              <p className="font-semibold">{formatCurrency(balance.totalGenerado)}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
+              <p className="font-semibold" style={{ color: 'var(--paid)' }}>
+                {formatCurrency(balance.totalPagado)}
+              </p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
+              <p className="font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+                {formatCurrency(balance.saldoAdeudado)}
+              </p>
+            </Card>
           </div>
+        </Collapsible>
+
+        <Collapsible
+          title="Pagos realizados"
+          action={
+            <div className="flex items-center gap-2">
+              {pagos.length > 0 && <SortToggle orden={ordenPagos} onChange={setOrdenPagos} label="Fecha" />}
+              <Button variant="secondary" onClick={() => setShowPago(true)}>
+                + Registrar pago
+              </Button>
+            </div>
+          }
+        >
+          {pagos.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)]">Sin pagos registrados.</p>
+          ) : (
+            <div className="space-y-2">
+              {pagosOrdenados.map((p) => (
+                <Card key={p.id} className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{formatDate(p.fecha)}</p>
+                    <p className="text-xs text-[var(--text-muted)] capitalize">{p.formaPago}</p>
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--paid)' }}>
+                    {formatCurrency(p.monto)}
+                  </p>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Collapsible>
+
+        <Collapsible
+          title={`Jornadas${pendientesDeValidar > 0 ? ` (${pendientesDeValidar} sin validar)` : ''}`}
+          action={
+            <div className="flex items-center gap-2">
+              {jornadas.length > 0 && <SortToggle orden={ordenJornadas} onChange={setOrdenJornadas} label="Fecha" />}
+              <Button variant="secondary" onClick={() => setShowJornada(true)}>
+                + Cargar jornada
+              </Button>
+            </div>
+          }
+        >
           {!tarifaActual && (
             <p className="text-xs mb-3" style={{ color: 'var(--partial)' }}>
               Para cargar jornadas por hora, fijá primero el valor de la hora. Los trabajos por monto fijo no lo necesitan.
@@ -162,7 +225,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
             <p className="text-sm text-[var(--text-muted)]">Sin jornadas cargadas.</p>
           ) : (
             <div className="space-y-2">
-              {jornadas.map((j) => (
+              {jornadasOrdenadas.map((j) => (
                 <Card key={j.id} className="p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
@@ -180,9 +243,19 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                       )}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
+                    {!j.validada && (
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--partial)' }}>
+                        Pendiente de validar
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <p className="text-sm font-medium">{formatCurrency(j.montoTotal)}</p>
+                    {!j.validada && (
+                      <Button variant="secondary" onClick={() => handleValidar(j.id)}>
+                        Validar
+                      </Button>
+                    )}
                     <button
                       onClick={() => setJornadaEditando(j)}
                       className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
@@ -194,33 +267,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
               ))}
             </div>
           )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-sm">Pagos realizados</h3>
-            <Button variant="secondary" onClick={() => setShowPago(true)}>
-              + Registrar pago
-            </Button>
-          </div>
-          {pagos.length === 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">Sin pagos registrados.</p>
-          ) : (
-            <div className="space-y-2">
-              {pagos.map((p) => (
-                <Card key={p.id} className="p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{formatDate(p.fecha)}</p>
-                    <p className="text-xs text-[var(--text-muted)] capitalize">{p.formaPago}</p>
-                  </div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--paid)' }}>
-                    {formatCurrency(p.monto)}
-                  </p>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+        </Collapsible>
       </div>
 
       <JornadaFormModal open={showJornada} onClose={() => setShowJornada(false)} onSaved={reload} empleadoId={empleado.id} />
@@ -234,6 +281,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       <PagoEmpleadoFormModal open={showPago} onClose={() => setShowPago(false)} onSaved={reload} empleadoId={empleado.id} />
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
       <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={onChanged} empleado={empleado} />
+      <DiasTrabajadosModal open={showCalendario} onClose={() => setShowCalendario(false)} jornadas={jornadas} />
     </SlidePanel>
   )
 }

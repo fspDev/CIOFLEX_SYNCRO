@@ -70,6 +70,9 @@ export function JornadaFormModal({ open, onClose, onSaved, empleadoId, jornada }
         horaFin: tipoCarga === 'rango' ? horaFin : undefined,
         descripcion,
         proyectoId: proyectoId || undefined,
+        // Lo que carga o edita un admin queda validado de una; lo que se autocarga un
+        // empleado queda pendiente hasta que un admin lo revise.
+        validada: esAdmin,
       }
 
       let data: Omit<Jornada, 'id' | 'createdAt' | 'updatedAt'>
@@ -174,6 +177,12 @@ export function JornadaFormModal({ open, onClose, onSaved, empleadoId, jornada }
         <Field label="Descripción">
           <Textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} required />
         </Field>
+
+        {!esAdmin && (
+          <p className="text-xs" style={{ color: 'var(--partial)' }}>
+            Esta jornada queda pendiente de validación — un admin la tiene que revisar para que impacte en tu balance.
+          </p>
+        )}
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

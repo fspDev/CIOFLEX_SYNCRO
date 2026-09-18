@@ -43,13 +43,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ---- jornadas: el empleado puede crear/leer las suyas; solo admin edita/elimina.
+    // ---- jornadas: el empleado puede crear/leer las suyas; solo admin edita/elimina/valida.
     // Un empleado autocargando su jornada solo puede hacerlo 'por hora' -- el monto fijo
-    // 'por trabajo' es una condición comercial que solo puede fijar un admin. ----
+    // 'por trabajo' es una condición comercial que solo puede fijar un admin -- y nunca puede
+    // autovalidarse (validada tiene que quedar en false). ----
     match /jornadas/{id} {
       allow read: if isAdmin() || isOwnEmpleado(resource.data.empleadoId);
       allow create: if isAdmin() ||
-        (isOwnEmpleado(request.resource.data.empleadoId) && request.resource.data.get('tipoPago', 'hora') == 'hora');
+        (isOwnEmpleado(request.resource.data.empleadoId)
+          && request.resource.data.get('tipoPago', 'hora') == 'hora'
+          && request.resource.data.get('validada', false) == false);
       allow update, delete: if isAdmin();
     }
 
@@ -81,6 +84,11 @@ service cloud.firestore {
 
     // ---- movimientos de caja (compra de materiales/herramientas, trabajos extra): 100% admin ----
     match /movimientos_caja/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ---- configuración editable (tipos de servicio, categorías de movimientos): 100% admin ----
+    match /configuracion/{id} {
       allow read, write: if isAdmin();
     }
   }

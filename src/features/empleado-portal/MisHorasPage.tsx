@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Collapsible } from '../../components/ui/Collapsible'
 import { useAuthStore } from '../../store/authStore'
 import { listarJornadasPorEmpleado, listarPagosPorEmpleado } from '../../lib/repo'
 import { calcularBalanceEmpleado } from '../../lib/balance'
@@ -46,24 +47,26 @@ export function MisHorasPage() {
         <Button onClick={() => setShowForm(true)}>+ Cargar jornada</Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
-          <p className="text-xl font-semibold">{formatCurrency(balance.totalGenerado)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
-          <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
-            {formatCurrency(balance.totalPagado)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
-          <p className="text-xl font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
-            {formatCurrency(balance.saldoAdeudado)}
-          </p>
-        </Card>
-      </div>
+      <Collapsible title="Balance">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Generado</p>
+            <p className="text-xl font-semibold">{formatCurrency(balance.totalGenerado)}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Pagado</p>
+            <p className="text-xl font-semibold" style={{ color: 'var(--paid)' }}>
+              {formatCurrency(balance.totalPagado)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-[var(--text-muted)] mb-1">Adeudado</p>
+            <p className="text-xl font-semibold" style={{ color: balance.saldoAdeudado > 0 ? 'var(--debt)' : 'var(--paid)' }}>
+              {formatCurrency(balance.saldoAdeudado)}
+            </p>
+          </Card>
+        </div>
+      </Collapsible>
 
       <h2 className="font-medium text-sm mb-3">Historial de jornadas</h2>
       {loading ? (
@@ -90,6 +93,9 @@ export function MisHorasPage() {
                   )}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
+                <p className="text-xs mt-0.5" style={{ color: j.validada ? 'var(--paid)' : 'var(--partial)' }}>
+                  {j.validada ? 'Validada' : 'Pendiente de validación'}
+                </p>
               </div>
               <p className="text-sm font-medium shrink-0">{formatCurrency(j.montoTotal)}</p>
             </Card>

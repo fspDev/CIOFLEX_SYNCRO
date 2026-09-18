@@ -60,6 +60,9 @@ export interface Jornada {
   valorHora?: number // congelado al momento de la carga (vigente ese mes); solo si tipoPago === 'hora'
   montoFijo?: number // monto acordado para el trabajo; solo si tipoPago === 'trabajo'
   montoTotal: number // horas * valorHora, o montoFijo si es por trabajo — siempre calculado y guardado
+  // Una jornada cargada por el propio empleado no impacta en su balance hasta que un admin la
+  // valida. Las que carga o edita un admin quedan validadas de una.
+  validada: boolean
   createdAt: string
   updatedAt: string
 }
@@ -78,10 +81,14 @@ export interface PagoEmpleado {
 
 export type EstadoComercialProyecto = 'negociacion' | 'confirmado' | 'cancelado'
 
-// Los 3 servicios que ofrece la empresa — determina qué tipo de trabajo es el proyecto.
-export type TipoServicioProyecto = 'armado' | 'mantenimiento' | 'construccion'
+// El tipo de servicio es un nombre libre editable por el admin (ver Configuración), no un enum
+// fijo — referencia por nombre a un item de TipoServicioConfig.
+export type TipoServicioProyecto = string
 
-export interface EmpleadoAsignado {
+// Asignación de un empleado a un día puntual del proyecto — no necesariamente el mismo
+// empleado hace todos los días de un trabajo (ej. mantenimiento de 2 días con gente distinta).
+export interface AsignacionDia {
+  fecha: string // 'YYYY-MM-DD'
   empleadoId: string
   horaInicio?: string
   horaFin?: string
@@ -93,16 +100,20 @@ export interface Proyecto {
   ubicacion: string
   clienteId: string
   tipoServicio: TipoServicioProyecto
+  // Fechas por fases: solo aplica cuando el tipo de servicio tiene usaFasesArmado = true.
   fechaArmadoInicio?: string // 'YYYY-MM-DD'
   fechaEventoInicio?: string
   fechaEventoFin?: string
   fechaDesarmeInicio?: string
   fechaDesarmeFin?: string
+  // Días de trabajo sueltos, no necesariamente consecutivos — solo aplica cuando el tipo de
+  // servicio tiene usaFasesArmado = false (ej. mantenimiento, instalación puntual).
+  diasTrabajo?: string[]
   estadoComercial: EstadoComercialProyecto
-  empleadosAsignados: EmpleadoAsignado[]
-  // Espejo de empleadosAsignados.map(a => a.empleadoId), mantenido por el repo en cada escritura.
-  // Existe solo para que las reglas de Firestore y las queries puedan filtrar por empleado
-  // (un array de objetos no sirve para `array-contains` ni para comparar en las reglas).
+  asignaciones: AsignacionDia[]
+  // Espejo de asignaciones.map(a => a.empleadoId) sin duplicados, mantenido por el repo en cada
+  // escritura. Existe solo para que las reglas de Firestore y las queries puedan filtrar por
+  // empleado (un array de objetos no sirve para `array-contains` ni para comparar en las reglas).
   empleadosIds: string[]
   presupuesto: number
   notas?: string
@@ -139,16 +150,20 @@ export type EstadoCronologico =
 
 export type TipoMovimiento = 'ingreso' | 'egreso'
 
-export const CATEGORIAS_MOVIMIENTO = [
+// Valores por defecto — se usan solo para "sembrar" la configuración la primera vez.
+// Desde ahí en más, la lista real vive en Firestore (colección `configuracion`) y es editable
+// desde la sección Configuración.
+export const CATEGORIAS_MOVIMIENTO_DEFAULT = [
   'Materiales',
   'Herramientas',
   'Trabajo extra',
   'Alquiler',
   'Transporte/Combustible',
   'Otro',
-] as const
+]
 
-export type CategoriaMovimiento = (typeof CATEGORIAS_MOVIMIENTO)[number]
+// La categoría es un nombre libre editable por el admin, no un enum fijo.
+export type CategoriaMovimiento = string
 
 // Flujo de caja general de la empresa, no ligado a un empleado ni a un proyecto puntual:
 // compra de materiales/herramientas (egreso) o trabajos extra sueltos (ingreso).
@@ -162,3 +177,17 @@ export interface MovimientoCaja {
   formaPago: FormaPago
   createdAt: string
 }
+
+// ---------- Configuración editable por el admin ----------
+
+export interface TipoServicioConfig {
+  nombre: string
+  // true = usa fechas por fases (armado/evento/desarme). false = usa una lista de días sueltos.
+  usaFasesArmado: boolean
+}
+
+export const TIPOS_SERVICIO_DEFAULT: TipoServicioConfig[] = [
+  { nombre: 'Armado', usaFasesArmado: true },
+  { nombre: 'Mantenimiento', usaFasesArmado: false },
+  { nombre: 'Construcción', usaFasesArmado: false },
+]
