@@ -57,13 +57,14 @@ export function diasEnRango(inicio?: string, fin?: string): string[] {
 /** Días concretos de las fases armado/evento/desarme, sin duplicados y ordenados. */
 export function diasDeFasesArmado(fechas: {
   fechaArmadoInicio?: string
+  fechaArmadoFin?: string
   fechaEventoInicio?: string
   fechaEventoFin?: string
   fechaDesarmeInicio?: string
   fechaDesarmeFin?: string
 }): string[] {
   const dias = new Set<string>()
-  diasEnRango(fechas.fechaArmadoInicio, fechas.fechaArmadoInicio).forEach((d) => dias.add(d))
+  diasEnRango(fechas.fechaArmadoInicio, fechas.fechaArmadoFin ?? fechas.fechaArmadoInicio).forEach((d) => dias.add(d))
   diasEnRango(fechas.fechaEventoInicio, fechas.fechaEventoFin).forEach((d) => dias.add(d))
   diasEnRango(fechas.fechaDesarmeInicio, fechas.fechaDesarmeFin).forEach((d) => dias.add(d))
   return [...dias].sort(compareDateStr)

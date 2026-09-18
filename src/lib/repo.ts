@@ -179,7 +179,7 @@ function normalizarProyecto(id: string, data: Omit<Proyecto, 'id'> & { empleados
 
 // Copia mínima de diasDelProyecto (sin importar de proyectoEstado.ts para evitar un ciclo de
 // módulos, ya que ese archivo no depende de repo.ts) — solo para la migración al vuelo de arriba.
-function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?: string; fechaEventoInicio?: string; fechaEventoFin?: string; fechaDesarmeInicio?: string; fechaDesarmeFin?: string }): string[] {
+function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?: string; fechaArmadoFin?: string; fechaEventoInicio?: string; fechaEventoFin?: string; fechaDesarmeInicio?: string; fechaDesarmeFin?: string }): string[] {
   if (p.diasTrabajo && p.diasTrabajo.length > 0) return [...p.diasTrabajo].sort(compareDateStr)
   const dias = new Set<string>()
   function addRange(inicio?: string, fin?: string) {
@@ -193,7 +193,7 @@ function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?:
       cur.setDate(cur.getDate() + 1)
     }
   }
-  addRange(p.fechaArmadoInicio, p.fechaArmadoInicio)
+  addRange(p.fechaArmadoInicio, p.fechaArmadoFin ?? p.fechaArmadoInicio)
   addRange(p.fechaEventoInicio, p.fechaEventoFin)
   addRange(p.fechaDesarmeInicio, p.fechaDesarmeFin)
   return [...dias].sort(compareDateStr)

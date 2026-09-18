@@ -22,6 +22,7 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
   const [estadoComercial, setEstadoComercial] = useState<EstadoComercialProyecto>(proyecto?.estadoComercial ?? 'negociacion')
   const [tipoServicio, setTipoServicio] = useState(proyecto?.tipoServicio ?? '')
   const [fechaArmadoInicio, setFechaArmadoInicio] = useState(proyecto?.fechaArmadoInicio ?? '')
+  const [fechaArmadoFin, setFechaArmadoFin] = useState(proyecto?.fechaArmadoFin ?? proyecto?.fechaArmadoInicio ?? '')
   const [fechaEventoInicio, setFechaEventoInicio] = useState(proyecto?.fechaEventoInicio ?? todayStr())
   const [fechaEventoFin, setFechaEventoFin] = useState(proyecto?.fechaEventoFin ?? '')
   const [fechaDesarmeInicio, setFechaDesarmeInicio] = useState(proyecto?.fechaDesarmeInicio ?? '')
@@ -54,10 +55,10 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
 
   const diasDelTrabajo = useMemo(() => {
     if (usaFasesArmado) {
-      return diasDeFasesArmado({ fechaArmadoInicio, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin })
+      return diasDeFasesArmado({ fechaArmadoInicio, fechaArmadoFin, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin })
     }
     return [...diasTrabajo].sort()
-  }, [usaFasesArmado, fechaArmadoInicio, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin, diasTrabajo])
+  }, [usaFasesArmado, fechaArmadoInicio, fechaArmadoFin, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin, diasTrabajo])
 
   function handleAgregarDia() {
     if (!nuevoDia || diasTrabajo.includes(nuevoDia)) return
@@ -88,6 +89,8 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
       estadoComercial,
       tipoServicio,
       fechaArmadoInicio: usaFasesArmado ? fechaArmadoInicio || undefined : undefined,
+      // Si no se especifica fin de armado, por defecto es el mismo día que el inicio.
+      fechaArmadoFin: usaFasesArmado ? (fechaArmadoFin || fechaArmadoInicio || undefined) : undefined,
       fechaEventoInicio: usaFasesArmado ? fechaEventoInicio || undefined : undefined,
       fechaEventoFin: usaFasesArmado ? fechaEventoFin || undefined : undefined,
       fechaDesarmeInicio: usaFasesArmado ? fechaDesarmeInicio || undefined : undefined,
@@ -158,7 +161,15 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
               <Field label="Armado (inicio)">
                 <Input type="date" value={fechaArmadoInicio} onChange={(e) => setFechaArmadoInicio(e.target.value)} />
               </Field>
-              <div />
+              <Field label="Armado (fin)">
+                <Input
+                  type="date"
+                  value={fechaArmadoFin}
+                  min={fechaArmadoInicio || undefined}
+                  onChange={(e) => setFechaArmadoFin(e.target.value)}
+                />
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">Si se deja vacío, es el mismo día del inicio.</p>
+              </Field>
               <Field label="Evento (inicio)">
                 <Input type="date" value={fechaEventoInicio} onChange={(e) => setFechaEventoInicio(e.target.value)} required />
               </Field>

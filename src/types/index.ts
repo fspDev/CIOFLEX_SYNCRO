@@ -102,6 +102,8 @@ export interface Proyecto {
   tipoServicio: TipoServicioProyecto
   // Fechas por fases: solo aplica cuando el tipo de servicio tiene usaFasesArmado = true.
   fechaArmadoInicio?: string // 'YYYY-MM-DD'
+  // Si no se carga explícitamente, se guarda igual a fechaArmadoInicio (armado de un solo día).
+  fechaArmadoFin?: string
   fechaEventoInicio?: string
   fechaEventoFin?: string
   fechaDesarmeInicio?: string

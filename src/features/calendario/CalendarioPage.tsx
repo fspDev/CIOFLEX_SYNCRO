@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
 import { listarClientes, listarProyectos } from '../../lib/repo'
+import { formatDate } from '../../lib/utils'
 import type { Cliente, Proyecto } from '../../types'
 import { ProyectoDetailPanel } from '../proyectos/ProyectoDetailPanel'
 
@@ -11,15 +13,38 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
 
+type TipoFase = 'armado' | 'evento' | 'desarme'
+
 interface DiaEvento {
   proyecto: Proyecto
-  tipo: 'armado' | 'evento' | 'desarme'
+  tipo: TipoFase
 }
 
-const COLOR_TIPO: Record<DiaEvento['tipo'], string> = {
+const COLOR_TIPO: Record<TipoFase, string> = {
   armado: 'var(--armado)',
   evento: 'var(--brand-500)',
   desarme: 'var(--desarme)',
+}
+
+const LABEL_TIPO: Record<TipoFase, string> = {
+  armado: 'Armado',
+  evento: 'Evento',
+  desarme: 'Desarme',
+}
+
+/** Agrupa los eventos de un día por proyecto (un proyecto puede tener más de una fase el mismo día). */
+function agruparPorProyecto(eventos: DiaEvento[]): { proyecto: Proyecto; tipos: TipoFase[] }[] {
+  const orden: string[] = []
+  const grupos = new Map<string, { proyecto: Proyecto; tipos: TipoFase[] }>()
+  for (const ev of eventos) {
+    if (!grupos.has(ev.proyecto.id)) {
+      grupos.set(ev.proyecto.id, { proyecto: ev.proyecto, tipos: [] })
+      orden.push(ev.proyecto.id)
+    }
+    const grupo = grupos.get(ev.proyecto.id)!
+    if (!grupo.tipos.includes(ev.tipo)) grupo.tipos.push(ev.tipo)
+  }
+  return orden.map((id) => grupos.get(id)!)
 }
 
 function toDate(s: string) {
@@ -36,6 +61,7 @@ export function CalendarioPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [cursor, setCursor] = useState(() => new Date())
   const [selected, setSelected] = useState<Proyecto | null>(null)
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
 
   useEffect(() => {
     listarProyectos().then(setProyectos)
@@ -60,7 +86,7 @@ export function CalendarioPage() {
       }
     }
     for (const p of proyectos) {
-      addRange(p, p.fechaArmadoInicio, p.fechaArmadoInicio, 'armado')
+      addRange(p, p.fechaArmadoInicio, p.fechaArmadoFin, 'armado')
       addRange(p, p.fechaEventoInicio, p.fechaEventoFin, 'evento')
       addRange(p, p.fechaDesarmeInicio, p.fechaDesarmeFin, 'desarme')
     }
@@ -120,14 +146,22 @@ export function CalendarioPage() {
           if (day === null) return <div key={i} />
           const key = dateStr(year, month, day)
           const eventos = eventosPorDia.get(key) ?? []
+          const tieneEventos = eventos.length > 0
           return (
-            <Card key={i} className="p-1.5 min-h-[88px] flex flex-col gap-1">
+            <Card
+              key={i}
+              onClick={tieneEventos ? () => setDiaSeleccionado(key) : undefined}
+              className={`p-1.5 min-h-[88px] flex flex-col gap-1 ${tieneEventos ? 'cursor-pointer hover:border-[var(--brand-500)]' : ''}`}
+            >
               <span className="text-xs text-[var(--text-muted)]">{day}</span>
               <div className="flex flex-col gap-0.5 overflow-hidden">
                 {eventos.slice(0, 3).map((ev, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setSelected(ev.proyecto)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelected(ev.proyecto)
+                    }}
                     className="text-[10px] truncate text-left px-1 py-0.5 rounded"
                     style={{ background: `${COLOR_TIPO[ev.tipo]}22`, color: COLOR_TIPO[ev.tipo] }}
                     title={`${ev.proyecto.nombre} — ${cliente(ev.proyecto.clienteId) ?? ''}`}
@@ -141,6 +175,39 @@ export function CalendarioPage() {
           )
         })}
       </div>
+
+      {diaSeleccionado && (
+        <Modal open onClose={() => setDiaSeleccionado(null)} title={formatDate(diaSeleccionado)} size="sm">
+          <div className="space-y-1.5">
+            {agruparPorProyecto(eventosPorDia.get(diaSeleccionado) ?? []).map(({ proyecto, tipos }) => (
+              <button
+                key={proyecto.id}
+                onClick={() => {
+                  setSelected(proyecto)
+                  setDiaSeleccionado(null)
+                }}
+                className="w-full flex items-center justify-between gap-3 text-left px-3 py-2.5 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--border)] transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{proyecto.nombre}</p>
+                  <p className="text-xs text-[var(--text-muted)] truncate">{cliente(proyecto.clienteId) ?? '—'}</p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  {tipos.map((tipo) => (
+                    <span
+                      key={tipo}
+                      className="text-[10px] px-1.5 py-0.5 rounded-full"
+                      style={{ background: `${COLOR_TIPO[tipo]}22`, color: COLOR_TIPO[tipo] }}
+                    >
+                      {LABEL_TIPO[tipo]}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
 
       {selected && (
         <ProyectoDetailPanel
