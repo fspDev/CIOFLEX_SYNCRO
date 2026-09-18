@@ -24,14 +24,16 @@ async function requireCallerRol(request, allowedRoles, mensaje) {
 }
 
 /**
- * Callable que solo un admin puede invocar: crea (o resetea) el acceso de un empleado.
+ * Callable que solo un admin puede invocar: crea, edita o resetea el acceso de un empleado.
  * El empleado solo maneja un "usuario" simple (sin email) -- puertas adentro se traduce
  * a un email sintético fijo, porque Firebase Auth Email/Password lo requiere.
  *
  * Se hace vía Cloud Function (Admin SDK) porque createUserWithEmailAndPassword en el
  * cliente firma automáticamente como el usuario nuevo, echando al admin de su sesión.
  *
- * data: { empleadoId, usuario, password }
+ * data: { empleadoId, usuario, password? } -- password es requerido solo para el primer
+ * acceso; si el empleado ya tiene cuenta, es opcional: sin password se edita el usuario
+ * (y por lo tanto el email de login) dejando la contraseña actual intacta.
  */
 exports.crearAccesoEmpleado = onCall(async (request) => {
   await requireCallerRol(request, ['admin', 'admin_supremo'], 'Solo un administrador puede generar accesos.')
@@ -39,10 +41,10 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
   const { empleadoId } = request.data || {}
   const usuario = (request.data?.usuario || '').trim()
   const password = (request.data?.password || '').trim()
-  if (!empleadoId || !usuario || !password) {
-    throw new HttpsError('invalid-argument', 'Faltan datos: empleadoId, usuario y password son requeridos.')
+  if (!empleadoId || !usuario) {
+    throw new HttpsError('invalid-argument', 'Faltan datos: empleadoId y usuario son requeridos.')
   }
-  if (password.length < 6) {
+  if (password && password.length < 6) {
     throw new HttpsError('invalid-argument', 'La contraseña debe tener al menos 6 caracteres.')
   }
 
@@ -55,9 +57,14 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
 
   let userRecord
   if (empleado.authUid) {
-    // Ya tenía cuenta: resetear contraseña / actualizar usuario en vez de duplicar.
-    userRecord = await auth.updateUser(empleado.authUid, { email, password })
+    // Ya tenía cuenta: actualiza el usuario y, si se mandó una nueva, también la contraseña.
+    const updates = { email }
+    if (password) updates.password = password
+    userRecord = await auth.updateUser(empleado.authUid, updates)
   } else {
+    if (!password) {
+      throw new HttpsError('invalid-argument', 'La contraseña es requerida para generar el primer acceso.')
+    }
     userRecord = await auth.createUser({ email, password, displayName: `${empleado.nombre} ${empleado.apellido}` })
   }
 
@@ -69,7 +76,9 @@ exports.crearAccesoEmpleado = onCall(async (request) => {
     createdAt: new Date().toISOString(),
   })
 
-  await empleadoRef.update({ authUid: userRecord.uid, usuario, passwordActual: password })
+  const empleadoUpdate = { authUid: userRecord.uid, usuario }
+  if (password) empleadoUpdate.passwordActual = password
+  await empleadoRef.update(empleadoUpdate)
 
   return { uid: userRecord.uid, usuario }
 })

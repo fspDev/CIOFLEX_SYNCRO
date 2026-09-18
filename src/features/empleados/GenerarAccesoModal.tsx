@@ -22,6 +22,7 @@ function usuarioSugerido(empleado: Empleado) {
 }
 
 export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) {
+  const editando = !!empleado.authUid
   const [usuario, setUsuario] = useState(usuarioSugerido(empleado))
   const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
@@ -37,8 +38,14 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
       const usuarioNormalizado = normalizarUsuario(usuario)
       const passwordFinal = password.trim()
       const crearAccesoEmpleado = httpsCallable(functions, 'crearAccesoEmpleado')
-      await crearAccesoEmpleado({ empleadoId: empleado.id, usuario: usuarioNormalizado, password: passwordFinal })
-      setResultado({ usuario: usuarioNormalizado, password: passwordFinal })
+      // Si ya tiene acceso y no se cargó una contraseña nueva, se edita solo el usuario
+      // y la contraseña actual queda sin cambios.
+      await crearAccesoEmpleado({
+        empleadoId: empleado.id,
+        usuario: usuarioNormalizado,
+        ...(passwordFinal ? { password: passwordFinal } : {}),
+      })
+      setResultado({ usuario: usuarioNormalizado, password: passwordFinal || empleado.passwordActual || '' })
       onSaved()
     } catch {
       setError('No se pudo generar el acceso. Verificá que las Cloud Functions estén deployadas.')
@@ -63,7 +70,7 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Generar acceso" size="sm">
+    <Modal open={open} onClose={handleClose} title={editando ? 'Editar acceso' : 'Generar acceso'} size="sm">
       {resultado ? (
         <div className="space-y-4">
           <p className="text-sm text-[var(--text-muted)]">
@@ -94,22 +101,27 @@ export function GenerarAccesoModal({ open, onClose, onSaved, empleado }: Props) 
           <p className="text-xs text-[var(--text-muted)] -mt-2">
             Sin espacios ni email — solo un nombre de usuario simple, ej. <code>juan.perez</code>.
           </p>
-          <Field label="Contraseña temporal">
+          <Field label={editando ? 'Contraseña nueva (opcional)' : 'Contraseña temporal'}>
             <PasswordInput
               defaultVisible
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
+              required={!editando}
               minLength={6}
             />
           </Field>
+          {editando && (
+            <p className="text-xs text-[var(--text-muted)] -mt-2">
+              Dejala vacía para cambiar solo el usuario y mantener la contraseña actual.
+            </p>
+          )}
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={handleClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Generando…' : 'Generar acceso'}
+              {saving ? 'Guardando…' : editando ? 'Guardar' : 'Generar acceso'}
             </Button>
           </div>
         </form>

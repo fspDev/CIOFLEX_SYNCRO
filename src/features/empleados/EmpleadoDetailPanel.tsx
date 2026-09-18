@@ -7,6 +7,7 @@ import { SortToggle, type Orden } from '../../components/ui/SortToggle'
 import {
   actualizarEmpleado,
   eliminarEmpleado,
+  eliminarJornada,
   listarJornadasPorEmpleado,
   listarPagosPorEmpleado,
   listarTarifas,
@@ -96,6 +97,12 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
     reload()
   }
 
+  async function handleEliminarJornada(j: Jornada) {
+    if (!confirm(`¿Eliminar la jornada del ${formatDate(j.fecha)}? Esta acción no se puede deshacer.`)) return
+    await eliminarJornada(j.id)
+    reload()
+  }
+
   return (
     <SlidePanel open onClose={onClose} title={nombreCompleto(empleado.nombre, empleado.apellido)}>
       <div className="space-y-6">
@@ -125,7 +132,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
               </Button>
             )}
             <Button variant="secondary" onClick={() => setShowAcceso(true)}>
-              {empleado.authUid ? 'Resetear acceso' : 'Generar acceso'}
+              {empleado.authUid ? 'Editar acceso' : 'Generar acceso'}
             </Button>
             <Button variant="secondary" onClick={handleToggleActivo}>
               {empleado.activo ? 'Marcar inactivo' : 'Marcar activo'}
@@ -261,6 +268,12 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                       className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
                     >
                       Editar
+                    </button>
+                    <button
+                      onClick={() => handleEliminarJornada(j)}
+                      className="text-xs text-[var(--text-muted)] hover:text-red-400"
+                    >
+                      Eliminar
                     </button>
                   </div>
                 </Card>
