@@ -20,6 +20,9 @@ export interface Empleado {
   nombre: string
   apellido: string
   telefono: string
+  dniCuil?: string
+  fechaNacimiento?: string // 'YYYY-MM-DD'
+  direccion?: string
   usuario?: string // usuario simple de acceso (sin email), se define al generar el acceso
   passwordActual?: string // última contraseña asignada, guardada para poder compartirla de nuevo sin resetear
   activo: boolean

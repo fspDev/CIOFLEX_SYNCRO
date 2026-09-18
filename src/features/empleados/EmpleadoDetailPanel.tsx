@@ -14,8 +14,17 @@ import {
   validarJornada,
 } from '../../lib/repo'
 import { calcularBalanceEmpleado } from '../../lib/balance'
-import { compareDateStr, copiarAlPortapapeles, formatCurrency, formatDate, nombreCompleto, textoAccesoEmpleado } from '../../lib/utils'
+import {
+  compareDateStr,
+  copiarAlPortapapeles,
+  formatCurrency,
+  formatDate,
+  nombreCompleto,
+  textoAccesoEmpleado,
+  textoInfoEmpleado,
+} from '../../lib/utils'
 import type { Empleado, Jornada, PagoEmpleado, TarifaEmpleado } from '../../types'
+import { EmpleadoFormModal } from './EmpleadoFormModal'
 import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
 import { TarifaFormModal } from './TarifaFormModal'
@@ -38,8 +47,10 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
   const [showAcceso, setShowAcceso] = useState(false)
+  const [showEditar, setShowEditar] = useState(false)
   const [showCalendario, setShowCalendario] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  const [copiadoInfo, setCopiadoInfo] = useState(false)
   const [ordenPagos, setOrdenPagos] = useState<Orden>('desc')
   const [ordenJornadas, setOrdenJornadas] = useState<Orden>('desc')
 
@@ -92,6 +103,14 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
     }
   }
 
+  async function handleCopiarInfo() {
+    const ok = await copiarAlPortapapeles(textoInfoEmpleado(empleado))
+    if (ok) {
+      setCopiadoInfo(true)
+      setTimeout(() => setCopiadoInfo(false), 2000)
+    }
+  }
+
   async function handleValidar(id: string) {
     await validarJornada(id)
     reload()
@@ -134,6 +153,9 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
             <Button variant="secondary" onClick={() => setShowAcceso(true)}>
               {empleado.authUid ? 'Editar acceso' : 'Generar acceso'}
             </Button>
+            <Button variant="secondary" onClick={() => setShowEditar(true)}>
+              Editar
+            </Button>
             <Button variant="secondary" onClick={handleToggleActivo}>
               {empleado.activo ? 'Marcar inactivo' : 'Marcar activo'}
             </Button>
@@ -142,6 +164,33 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
             </Button>
           </div>
         </div>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-sm">Datos personales</h3>
+            <Button variant="secondary" onClick={handleCopiarInfo}>
+              {copiadoInfo ? 'Copiado ✓' : 'Copiar información'}
+            </Button>
+          </div>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="text-[var(--text-muted)] shrink-0">Nombre y apellido</span>
+              <span className="font-medium text-right">{nombreCompleto(empleado.nombre, empleado.apellido)}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-[var(--text-muted)] shrink-0">DNI/CUIL</span>
+              <span className="font-medium text-right">{empleado.dniCuil || '—'}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-[var(--text-muted)] shrink-0">Fecha de nacimiento</span>
+              <span className="font-medium text-right">{formatDate(empleado.fechaNacimiento)}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-[var(--text-muted)] shrink-0">Dirección</span>
+              <span className="font-medium text-right">{empleado.direccion || '—'}</span>
+            </div>
+          </div>
+        </Card>
 
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -294,6 +343,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       <PagoEmpleadoFormModal open={showPago} onClose={() => setShowPago(false)} onSaved={reload} empleadoId={empleado.id} />
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
       <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={onChanged} empleado={empleado} />
+      <EmpleadoFormModal open={showEditar} onClose={() => setShowEditar(false)} onSaved={onChanged} empleado={empleado} />
       <DiasTrabajadosModal open={showCalendario} onClose={() => setShowCalendario(false)} jornadas={jornadas} />
     </SlidePanel>
   )

@@ -188,7 +188,7 @@ export function EmpleadosPage() {
                                   setAccesoTarget(e)
                                 }}
                               >
-                                Resetear acceso
+                                Editar acceso
                               </DropdownItem>
                             </>
                           ) : (

@@ -1,6 +1,8 @@
 // Helpers centralizados de formato — todo el resto de la app importa de acá,
 // nunca reimplementa formateo de fecha/moneda por pantalla.
 
+import type { Empleado } from '../types'
+
 /** Resuelve una ruta de public/ contra el base path del deploy (GitHub Pages sirve bajo /cioflex-syncro/). */
 export function asset(path: string): string {
   return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
@@ -81,6 +83,16 @@ export const APP_URL = 'https://fspdev.github.io/CIOFLEX_SYNCRO/'
 
 export function textoAccesoEmpleado(usuario: string, password: string): string {
   return `Usuario: ${usuario}\nContraseña: ${password}\n${APP_URL}`
+}
+
+/** Ficha de datos personales del empleado, lista para copiar y enviar (ej. por WhatsApp/email). */
+export function textoInfoEmpleado(empleado: Empleado): string {
+  return [
+    `Nombre y apellido: ${nombreCompleto(empleado.nombre, empleado.apellido)}`,
+    `DNI/CUIL: ${empleado.dniCuil || '—'}`,
+    `Fecha de nacimiento: ${formatDate(empleado.fechaNacimiento)}`,
+    `Dirección: ${empleado.direccion || '—'}`,
+  ].join('\n')
 }
 
 /** Copia al portapapeles; devuelve si funcionó (puede fallar en contextos sin permiso/HTTPS). */
