@@ -28,7 +28,6 @@ import { EmpleadoFormModal } from './EmpleadoFormModal'
 import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
 import { TarifaFormModal } from './TarifaFormModal'
-import { GenerarAccesoModal } from './GenerarAccesoModal'
 import { DiasTrabajadosModal } from './DiasTrabajadosModal'
 
 interface Props {
@@ -46,7 +45,6 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [jornadaEditando, setJornadaEditando] = useState<Jornada | null>(null)
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
-  const [showAcceso, setShowAcceso] = useState(false)
   const [showEditar, setShowEditar] = useState(false)
   const [showCalendario, setShowCalendario] = useState(false)
   const [copiado, setCopiado] = useState(false)
@@ -150,9 +148,6 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                 {copiado ? 'Copiado ✓' : 'Copiar acceso'}
               </Button>
             )}
-            <Button variant="secondary" onClick={() => setShowAcceso(true)}>
-              {empleado.authUid ? 'Editar acceso' : 'Generar acceso'}
-            </Button>
             <Button variant="secondary" onClick={() => setShowEditar(true)}>
               Editar
             </Button>
@@ -342,7 +337,6 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       />
       <PagoEmpleadoFormModal open={showPago} onClose={() => setShowPago(false)} onSaved={reload} empleadoId={empleado.id} />
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
-      <GenerarAccesoModal open={showAcceso} onClose={() => setShowAcceso(false)} onSaved={onChanged} empleado={empleado} />
       <EmpleadoFormModal open={showEditar} onClose={() => setShowEditar(false)} onSaved={onChanged} empleado={empleado} />
       <DiasTrabajadosModal open={showCalendario} onClose={() => setShowCalendario(false)} jornadas={jornadas} />
     </SlidePanel>

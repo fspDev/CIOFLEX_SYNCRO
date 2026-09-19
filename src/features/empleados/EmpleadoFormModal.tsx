@@ -17,8 +17,15 @@ interface Props {
   empleado?: Empleado // presente = editar; ausente = alta nueva
 }
 
+/** Usuario sugerido al editar un empleado que todavía no tiene acceso generado. */
+function usuarioSugerido(empleado: Empleado) {
+  if (empleado.usuario) return empleado.usuario
+  return normalizarUsuario(`${empleado.nombre}.${empleado.apellido}`)
+}
+
 export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
   const editando = !!empleado
+  const tieneAcceso = !!empleado?.authUid
 
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
@@ -39,7 +46,7 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
     setDniCuil(empleado?.dniCuil ?? '')
     setFechaNacimiento(empleado?.fechaNacimiento ?? '')
     setDireccion(empleado?.direccion ?? '')
-    setUsuario('')
+    setUsuario(empleado ? usuarioSugerido(empleado) : '')
     setPassword('')
     setError(null)
   }, [open, empleado])
@@ -47,6 +54,11 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (usuario.trim() && !password.trim() && !tieneAcceso) {
+      setError('Ingresá una contraseña para el acceso, o dejá "Usuario" vacío para no darle acceso todavía.')
+      return
+    }
 
     const datos = {
       nombre,
@@ -57,43 +69,42 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
       direccion: direccion.trim() || undefined,
     }
 
-    if (editando) {
-      setSaving(true)
-      try {
-        await actualizarEmpleado(empleado.id, datos)
-        onSaved()
-        onClose()
-      } finally {
-        setSaving(false)
-      }
-      return
-    }
-
-    if (usuario.trim() && !password.trim()) {
-      setError('Ingresá una contraseña para el acceso, o dejá "Usuario" vacío para no darle acceso todavía.')
-      return
-    }
     setSaving(true)
     try {
-      const empleadoId = await crearEmpleado({ ...datos, activo: true })
-      // Ya se creó el empleado -- limpiamos ahora para que un reintento tras un error de acceso
-      // no vuelva a crear un segundo empleado con los mismos datos.
-      setNombre('')
-      setApellido('')
-      setTelefono('')
-      setDniCuil('')
-      setFechaNacimiento('')
-      setDireccion('')
+      let empleadoId: string
+      if (editando) {
+        await actualizarEmpleado(empleado.id, datos)
+        empleadoId = empleado.id
+      } else {
+        empleadoId = await crearEmpleado({ ...datos, activo: true })
+        // Ya se creó el empleado -- limpiamos ahora para que un reintento tras un error de acceso
+        // no vuelva a crear un segundo empleado con los mismos datos.
+        setNombre('')
+        setApellido('')
+        setTelefono('')
+        setDniCuil('')
+        setFechaNacimiento('')
+        setDireccion('')
+      }
       onSaved()
 
-      if (usuario.trim() && password.trim()) {
+      // En alta o si todavía no tenía acceso: solo se toca si se cargó un usuario. Si ya tenía
+      // acceso: solo se vuelve a llamar a la función si el usuario o la contraseña cambiaron,
+      // para no reescribir la cuenta de Auth en cada edición de datos que no toca el acceso.
+      const usuarioCambio = tieneAcceso && normalizarUsuario(usuario) !== empleado?.usuario
+      const debeActualizarAcceso = usuario.trim() && (!tieneAcceso || usuarioCambio || password.trim())
+      if (debeActualizarAcceso) {
         try {
           const crearAccesoEmpleado = httpsCallable(functions, 'crearAccesoEmpleado')
-          await crearAccesoEmpleado({ empleadoId, usuario: normalizarUsuario(usuario), password: password.trim() })
+          await crearAccesoEmpleado({
+            empleadoId,
+            usuario: normalizarUsuario(usuario),
+            ...(password.trim() ? { password: password.trim() } : {}),
+          })
         } catch (err) {
           const detalle = mensajeError(err, '')
           setError(
-            `El empleado se creó, pero no se pudo generar su acceso${detalle ? `: ${detalle}` : ''}. Podés generarlo después desde el menú de 3 puntos.`,
+            `Se guardaron los datos, pero no se pudo ${tieneAcceso ? 'actualizar' : 'generar'} el acceso${detalle ? `: ${detalle}` : ''}.`,
           )
           setSaving(false)
           return
@@ -130,32 +141,29 @@ export function EmpleadoFormModal({ open, onClose, onSaved, empleado }: Props) {
           <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} />
         </Field>
 
-        {!editando && (
-          <div className="pt-2 border-t border-[var(--border)]">
-            <p className="text-xs font-medium text-[var(--text-muted)] mb-3">Acceso a la plataforma (opcional)</p>
-            <div className="space-y-3">
-              <Field label="Usuario de acceso">
-                <Input
-                  value={usuario}
-                  onChange={(e) => setUsuario(e.target.value)}
-                  placeholder="ej. juan.perez"
-                  minLength={3}
-                />
-              </Field>
-              <Field label="Contraseña">
-                <PasswordInput
-                  defaultVisible
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
-                />
-              </Field>
-              <p className="text-xs text-[var(--text-muted)]">
-                Dejá "Usuario" vacío si todavía no querés darle acceso — lo podés generar después desde el menú de 3 puntos.
-              </p>
-            </div>
+        <div className="pt-2 border-t border-[var(--border)]">
+          <p className="text-xs font-medium text-[var(--text-muted)] mb-3">
+            {tieneAcceso ? 'Usuario y contraseña de acceso' : 'Acceso a la plataforma (opcional)'}
+          </p>
+          <div className="space-y-3">
+            <Field label="Usuario de acceso">
+              <Input
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                placeholder="ej. juan.perez"
+                minLength={3}
+              />
+            </Field>
+            <Field label={tieneAcceso ? 'Contraseña nueva (opcional)' : 'Contraseña'}>
+              <PasswordInput defaultVisible value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+            </Field>
+            <p className="text-xs text-[var(--text-muted)]">
+              {tieneAcceso
+                ? 'Dejala vacía para mantener la contraseña actual.'
+                : 'Dejá "Usuario" vacío si todavía no querés darle acceso.'}
+            </p>
           </div>
-        )}
+        </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 

@@ -11,7 +11,6 @@ import { calcularBalanceEmpleado, type BalanceEmpleado } from '../../lib/balance
 import type { Empleado } from '../../types'
 import { EmpleadoFormModal } from './EmpleadoFormModal'
 import { EmpleadoDetailPanel } from './EmpleadoDetailPanel'
-import { GenerarAccesoModal } from './GenerarAccesoModal'
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos'
 type FiltroDeuda = 'todos' | 'con_deuda' | 'sin_deuda'
@@ -22,7 +21,7 @@ export function EmpleadosPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<Empleado | null>(null)
-  const [accesoTarget, setAccesoTarget] = useState<Empleado | null>(null)
+  const [editTarget, setEditTarget] = useState<Empleado | null>(null)
   const [feedback, setFeedback] = useState<{ id: string; texto: string } | null>(null)
 
   const [busqueda, setBusqueda] = useState('')
@@ -166,41 +165,29 @@ export function EmpleadosPage() {
                     <Dropdown trigger={<span className="text-lg leading-none">⋮</span>}>
                       {(close) => (
                         <>
-                          {e.authUid ? (
-                            <>
-                              {e.passwordActual ? (
-                                <DropdownItem
-                                  onClick={() => {
-                                    close()
-                                    handleCopiarAcceso(e)
-                                  }}
-                                >
-                                  Copiar usuario y contraseña
-                                </DropdownItem>
-                              ) : (
-                                <p className="px-3.5 py-1.5 text-xs text-[var(--text-muted)]">
-                                  Sin contraseña guardada — reseteá el acceso para poder copiarlo.
-                                </p>
-                              )}
+                          {e.authUid &&
+                            (e.passwordActual ? (
                               <DropdownItem
                                 onClick={() => {
                                   close()
-                                  setAccesoTarget(e)
+                                  handleCopiarAcceso(e)
                                 }}
                               >
-                                Editar acceso
+                                Copiar usuario y contraseña
                               </DropdownItem>
-                            </>
-                          ) : (
-                            <DropdownItem
-                              onClick={() => {
-                                close()
-                                setAccesoTarget(e)
-                              }}
-                            >
-                              Generar acceso
-                            </DropdownItem>
-                          )}
+                            ) : (
+                              <p className="px-3.5 py-1.5 text-xs text-[var(--text-muted)]">
+                                Sin contraseña guardada — editá el acceso para poder copiarlo.
+                              </p>
+                            ))}
+                          <DropdownItem
+                            onClick={() => {
+                              close()
+                              setEditTarget(e)
+                            }}
+                          >
+                            Editar
+                          </DropdownItem>
                         </>
                       )}
                     </Dropdown>
@@ -227,12 +214,12 @@ export function EmpleadosPage() {
           onChanged={reload}
         />
       )}
-      {accesoTarget && (
-        <GenerarAccesoModal
+      {editTarget && (
+        <EmpleadoFormModal
           open
-          onClose={() => setAccesoTarget(null)}
+          onClose={() => setEditTarget(null)}
           onSaved={reload}
-          empleado={accesoTarget}
+          empleado={editTarget}
         />
       )}
     </div>
