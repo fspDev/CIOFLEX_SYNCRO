@@ -14,7 +14,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { compareDateStr, hoursBetween, monthStartOf, nowTimeStr, todayStr } from './utils'
+import { compareDateStr, hoursBetween, monthStartOf, todayStr } from './utils'
 import {
   CATEGORIAS_MOVIMIENTO_DEFAULT,
   TIPOS_SERVICIO_DEFAULT,
@@ -119,26 +119,28 @@ export async function listarJornadasPorProyecto(proyectoId: string): Promise<Jor
   return snap.docs.map((d) => normalizarJornada(d.id, d.data() as Omit<Jornada, 'id'>))
 }
 
-// Registro diferido: marca el inicio de la jornada ahora, con horas/monto en 0 hasta que se
-// cargue el fin (ver `finalizarJornada`). El valor de la hora se congela ya en este momento
-// (igual que en una jornada normal), no al finalizar.
+// Registro diferido: marca el inicio de la jornada (fecha y hora reales del ingreso, que pueden
+// no coincidir con el momento en que se carga -- ej. cargar a las 11:50 un ingreso de las 8:00),
+// con horas/monto en 0 hasta que se cargue el fin (ver `finalizarJornada`). El valor de la hora
+// se congela ya en este momento (igual que en una jornada normal), no al finalizar.
 export async function iniciarJornada(data: {
   empleadoId: string
+  fecha: string
+  horaInicio: string
   descripcion: string
   proyectoId?: string
   validada: boolean
 }) {
   const tarifas = await listarTarifas(data.empleadoId)
-  const fecha = todayStr()
-  const tarifa = tarifaVigente(tarifas, fecha)
+  const tarifa = tarifaVigente(tarifas, data.fecha)
   if (!tarifa) throw new Error('Este empleado todavía no tiene un valor de hora asignado. Fijalo primero desde su ficha.')
 
   const nueva: Omit<Jornada, 'id' | 'createdAt' | 'updatedAt'> = {
     empleadoId: data.empleadoId,
-    fecha,
+    fecha: data.fecha,
     tipoCarga: 'rango',
     horas: 0,
-    horaInicio: nowTimeStr(),
+    horaInicio: data.horaInicio,
     descripcion: data.descripcion,
     proyectoId: data.proyectoId,
     tipoPago: 'hora',

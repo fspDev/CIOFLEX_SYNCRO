@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
-import { Field, Select, Textarea } from '../../components/ui/Input'
+import { Field, Input, Select, Textarea } from '../../components/ui/Input'
 import { iniciarJornada, listarProyectos } from '../../lib/repo'
-import { nowTimeStr } from '../../lib/utils'
+import { nowTimeStr, todayStr } from '../../lib/utils'
 import type { Proyecto } from '../../types'
 
 interface Props {
@@ -14,8 +14,12 @@ interface Props {
   validada: boolean // true si lo inicia un admin (queda validada de una), false si es el propio empleado
 }
 
-/** Carga diferida: registra el inicio de la jornada ahora; el fin se carga después con `finalizarJornada`. */
+// Fecha y hora de inicio son editables porque la carga es diferida: se puede cargar el ingreso
+// bastante después de que ocurrió (ej. cargar a las 11:50 un ingreso que fue a las 8:00, o al
+// día siguiente). Por default se pre-cargan con el momento actual, pero no se fuerzan.
 export function IniciarJornadaModal({ open, onClose, onSaved, empleadoId, validada }: Props) {
+  const [fecha, setFecha] = useState(todayStr())
+  const [horaInicio, setHoraInicio] = useState(nowTimeStr())
   const [descripcion, setDescripcion] = useState('')
   const [proyectoId, setProyectoId] = useState('')
   const [proyectos, setProyectos] = useState<Proyecto[]>([])
@@ -25,6 +29,8 @@ export function IniciarJornadaModal({ open, onClose, onSaved, empleadoId, valida
   useEffect(() => {
     if (!open) return
     listarProyectos().then(setProyectos)
+    setFecha(todayStr())
+    setHoraInicio(nowTimeStr())
     setDescripcion('')
     setProyectoId('')
     setError(null)
@@ -35,7 +41,7 @@ export function IniciarJornadaModal({ open, onClose, onSaved, empleadoId, valida
     setError(null)
     setSaving(true)
     try {
-      await iniciarJornada({ empleadoId, descripcion, proyectoId: proyectoId || undefined, validada })
+      await iniciarJornada({ empleadoId, fecha, horaInicio, descripcion, proyectoId: proyectoId || undefined, validada })
       onSaved()
       onClose()
     } catch (err) {
@@ -49,8 +55,17 @@ export function IniciarJornadaModal({ open, onClose, onSaved, empleadoId, valida
     <Modal open={open} onClose={onClose} title="Iniciar jornada" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
         <p className="text-xs text-[var(--text-muted)]">
-          Se registra el inicio ahora ({nowTimeStr()} hs). Cargá el fin de la jornada cuando termines de trabajar.
+          Cargá el fin de la jornada más tarde, cuando termine de trabajar.
         </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Fecha">
+            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
+          </Field>
+          <Field label="Hora de inicio">
+            <Input type="time" value={horaInicio} onChange={(e) => setHoraInicio(e.target.value)} required />
+          </Field>
+        </div>
 
         <Field label="Proyecto (opcional)">
           <Select value={proyectoId} onChange={(e) => setProyectoId(e.target.value)}>
