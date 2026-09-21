@@ -17,6 +17,12 @@ export function todayStr(): string {
   return `${y}-${m}-${day}`
 }
 
+/** Hora actual 'HH:mm', en horario local. */
+export function nowTimeStr(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 /** Primer día del mes de una fecha 'YYYY-MM-DD', como 'YYYY-MM-01'. */
 export function monthStartOf(dateStr: string): string {
   return `${dateStr.slice(0, 7)}-01`

@@ -29,6 +29,8 @@ import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
 import { TarifaFormModal } from './TarifaFormModal'
 import { DiasTrabajadosModal } from './DiasTrabajadosModal'
+import { IniciarJornadaModal } from './IniciarJornadaModal'
+import { FinalizarJornadaModal } from './FinalizarJornadaModal'
 
 interface Props {
   empleado: Empleado
@@ -43,6 +45,8 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [loading, setLoading] = useState(true)
   const [showJornada, setShowJornada] = useState(false)
   const [jornadaEditando, setJornadaEditando] = useState<Jornada | null>(null)
+  const [showIniciar, setShowIniciar] = useState(false)
+  const [finalizando, setFinalizando] = useState<Jornada | null>(null)
   const [showPago, setShowPago] = useState(false)
   const [showTarifa, setShowTarifa] = useState(false)
   const [showEditar, setShowEditar] = useState(false)
@@ -259,6 +263,9 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
           action={
             <div className="flex items-center gap-2">
               {jornadas.length > 0 && <SortToggle orden={ordenJornadas} onChange={setOrdenJornadas} label="Fecha" />}
+              <Button variant="secondary" onClick={() => setShowIniciar(true)}>
+                Iniciar jornada
+              </Button>
               <Button variant="secondary" onClick={() => setShowJornada(true)}>
                 + Cargar jornada
               </Button>
@@ -281,7 +288,11 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
                       {formatDate(j.fecha)}
-                      {j.tipoPago === 'trabajo' ? (
+                      {j.enCurso ? (
+                        <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
+                          · en curso desde {j.horaInicio}
+                        </span>
+                      ) : j.tipoPago === 'trabajo' ? (
                         <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
                           · trabajo
                         </span>
@@ -294,25 +305,33 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
                       )}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
-                    {!j.validada && (
+                    {!j.validada && !j.enCurso && (
                       <p className="text-xs mt-0.5" style={{ color: 'var(--partial)' }}>
                         Pendiente de validar
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <p className="text-sm font-medium">{formatCurrency(j.montoTotal)}</p>
-                    {!j.validada && (
-                      <Button variant="secondary" onClick={() => handleValidar(j.id)}>
-                        Validar
+                    {j.enCurso ? (
+                      <Button variant="secondary" onClick={() => setFinalizando(j)}>
+                        Finalizar
                       </Button>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">{formatCurrency(j.montoTotal)}</p>
+                        {!j.validada && (
+                          <Button variant="secondary" onClick={() => handleValidar(j.id)}>
+                            Validar
+                          </Button>
+                        )}
+                        <button
+                          onClick={() => setJornadaEditando(j)}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+                        >
+                          Editar
+                        </button>
+                      </>
                     )}
-                    <button
-                      onClick={() => setJornadaEditando(j)}
-                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
-                    >
-                      Editar
-                    </button>
                     <button
                       onClick={() => handleEliminarJornada(j)}
                       className="text-xs text-[var(--text-muted)] hover:text-red-400"
@@ -339,6 +358,14 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
       <TarifaFormModal open={showTarifa} onClose={() => setShowTarifa(false)} onSaved={reload} empleadoId={empleado.id} />
       <EmpleadoFormModal open={showEditar} onClose={() => setShowEditar(false)} onSaved={onChanged} empleado={empleado} />
       <DiasTrabajadosModal open={showCalendario} onClose={() => setShowCalendario(false)} jornadas={jornadas} />
+      <IniciarJornadaModal
+        open={showIniciar}
+        onClose={() => setShowIniciar(false)}
+        onSaved={reload}
+        empleadoId={empleado.id}
+        validada
+      />
+      <FinalizarJornadaModal open={!!finalizando} onClose={() => setFinalizando(null)} onSaved={reload} jornada={finalizando} />
     </SlidePanel>
   )
 }

@@ -8,6 +8,8 @@ import { calcularBalanceEmpleado } from '../../lib/balance'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import type { Jornada, PagoEmpleado } from '../../types'
 import { JornadaFormModal } from '../empleados/JornadaFormModal'
+import { IniciarJornadaModal } from '../empleados/IniciarJornadaModal'
+import { FinalizarJornadaModal } from '../empleados/FinalizarJornadaModal'
 
 export function MisHorasPage() {
   const profile = useAuthStore((s) => s.profile)
@@ -16,6 +18,8 @@ export function MisHorasPage() {
   const [pagos, setPagos] = useState<PagoEmpleado[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showIniciar, setShowIniciar] = useState(false)
+  const [finalizando, setFinalizando] = useState<Jornada | null>(null)
 
   async function reload() {
     if (!empleadoId) return
@@ -36,16 +40,34 @@ export function MisHorasPage() {
   }
 
   const balance = calcularBalanceEmpleado(jornadas, pagos)
+  const jornadaEnCurso = jornadas.find((j) => j.enCurso) ?? null
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold">Mis horas</h1>
           <p className="text-sm text-[var(--text-muted)]">Cargá tus jornadas trabajadas</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>+ Cargar jornada</Button>
+        <div className="flex gap-2">
+          {!jornadaEnCurso && (
+            <Button variant="secondary" onClick={() => setShowIniciar(true)}>
+              Iniciar jornada
+            </Button>
+          )}
+          <Button onClick={() => setShowForm(true)}>+ Cargar jornada</Button>
+        </div>
       </div>
+
+      {jornadaEnCurso && (
+        <Card className="p-4 mb-6 flex items-center justify-between gap-3" style={{ borderColor: 'var(--partial)' }}>
+          <div>
+            <p className="text-sm font-medium">Jornada en curso, iniciada a las {jornadaEnCurso.horaInicio} hs</p>
+            <p className="text-xs text-[var(--text-muted)]">{jornadaEnCurso.descripcion}</p>
+          </div>
+          <Button onClick={() => setFinalizando(jornadaEnCurso)}>Finalizar jornada</Button>
+        </Card>
+      )}
 
       <Collapsible title="Balance">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -80,7 +102,11 @@ export function MisHorasPage() {
               <div className="min-w-0">
                 <p className="text-sm font-medium">
                   {formatDate(j.fecha)}
-                  {j.tipoPago === 'trabajo' ? (
+                  {j.enCurso ? (
+                    <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
+                      · en curso desde {j.horaInicio}
+                    </span>
+                  ) : j.tipoPago === 'trabajo' ? (
                     <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--partial)' }}>
                       · trabajo
                     </span>
@@ -93,17 +119,33 @@ export function MisHorasPage() {
                   )}
                 </p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{j.descripcion}</p>
-                <p className="text-xs mt-0.5" style={{ color: j.validada ? 'var(--paid)' : 'var(--partial)' }}>
-                  {j.validada ? 'Validada' : 'Pendiente de validación'}
-                </p>
+                {!j.enCurso && (
+                  <p className="text-xs mt-0.5" style={{ color: j.validada ? 'var(--paid)' : 'var(--partial)' }}>
+                    {j.validada ? 'Validada' : 'Pendiente de validación'}
+                  </p>
+                )}
               </div>
-              <p className="text-sm font-medium shrink-0">{formatCurrency(j.montoTotal)}</p>
+              {j.enCurso ? (
+                <Button variant="secondary" onClick={() => setFinalizando(j)}>
+                  Finalizar
+                </Button>
+              ) : (
+                <p className="text-sm font-medium shrink-0">{formatCurrency(j.montoTotal)}</p>
+              )}
             </Card>
           ))}
         </div>
       )}
 
       <JornadaFormModal open={showForm} onClose={() => setShowForm(false)} onSaved={reload} empleadoId={empleadoId} />
+      <IniciarJornadaModal
+        open={showIniciar}
+        onClose={() => setShowIniciar(false)}
+        onSaved={reload}
+        empleadoId={empleadoId}
+        validada={false}
+      />
+      <FinalizarJornadaModal open={!!finalizando} onClose={() => setFinalizando(null)} onSaved={reload} jornada={finalizando} />
     </div>
   )
 }

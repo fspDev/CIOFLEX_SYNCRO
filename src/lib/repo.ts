@@ -14,7 +14,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { compareDateStr, monthStartOf, todayStr } from './utils'
+import { compareDateStr, hoursBetween, monthStartOf, nowTimeStr, todayStr } from './utils'
 import {
   CATEGORIAS_MOVIMIENTO_DEFAULT,
   TIPOS_SERVICIO_DEFAULT,
@@ -99,7 +99,13 @@ export async function eliminarJornada(id: string) {
 // validación del admin se asumen ya validadas (así no desaparece de golpe el balance
 // histórico) — evita un script de migración aparte.
 function normalizarJornada(id: string, data: Omit<Jornada, 'id'>): Jornada {
-  return { id, ...data, tipoPago: data.tipoPago ?? 'hora', validada: data.validada ?? true }
+  return { id, ...data, tipoPago: data.tipoPago ?? 'hora', validada: data.validada ?? true, enCurso: data.enCurso ?? false }
+}
+
+export async function obtenerJornada(id: string): Promise<Jornada> {
+  const snap = await getDoc(doc(db, 'jornadas', id))
+  if (!snap.exists()) throw new Error('La jornada ya no existe.')
+  return normalizarJornada(snap.id, snap.data() as Omit<Jornada, 'id'>)
 }
 
 export async function listarJornadasPorEmpleado(empleadoId: string): Promise<Jornada[]> {
@@ -111,6 +117,46 @@ export async function listarJornadasPorEmpleado(empleadoId: string): Promise<Jor
 export async function listarJornadasPorProyecto(proyectoId: string): Promise<Jornada[]> {
   const snap = await getDocs(query(col('jornadas'), where('proyectoId', '==', proyectoId)))
   return snap.docs.map((d) => normalizarJornada(d.id, d.data() as Omit<Jornada, 'id'>))
+}
+
+// Registro diferido: marca el inicio de la jornada ahora, con horas/monto en 0 hasta que se
+// cargue el fin (ver `finalizarJornada`). El valor de la hora se congela ya en este momento
+// (igual que en una jornada normal), no al finalizar.
+export async function iniciarJornada(data: {
+  empleadoId: string
+  descripcion: string
+  proyectoId?: string
+  validada: boolean
+}) {
+  const tarifas = await listarTarifas(data.empleadoId)
+  const fecha = todayStr()
+  const tarifa = tarifaVigente(tarifas, fecha)
+  if (!tarifa) throw new Error('Este empleado todavía no tiene un valor de hora asignado. Fijalo primero desde su ficha.')
+
+  const nueva: Omit<Jornada, 'id' | 'createdAt' | 'updatedAt'> = {
+    empleadoId: data.empleadoId,
+    fecha,
+    tipoCarga: 'rango',
+    horas: 0,
+    horaInicio: nowTimeStr(),
+    descripcion: data.descripcion,
+    proyectoId: data.proyectoId,
+    tipoPago: 'hora',
+    valorHora: tarifa.valorHora,
+    montoTotal: 0,
+    validada: data.validada,
+    enCurso: true,
+  }
+  return crearJornada(nueva)
+}
+
+/** Cierra una jornada en curso: calcula horas y monto a partir de la hora de fin cargada. */
+export async function finalizarJornada(id: string, horaFin: string) {
+  const jornada = await obtenerJornada(id)
+  if (!jornada.horaInicio) throw new Error('La jornada no tiene hora de inicio registrada.')
+  const horas = hoursBetween(jornada.horaInicio, horaFin)
+  const montoTotal = Math.round(horas * (jornada.valorHora ?? 0))
+  await actualizarJornada(id, { horaFin, horas, montoTotal, enCurso: false })
 }
 
 /** Solo impacta el balance del empleado una vez validada por un admin. */

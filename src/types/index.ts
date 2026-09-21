@@ -54,18 +54,21 @@ export interface Jornada {
   empleadoId: string
   fecha: string // 'YYYY-MM-DD'
   tipoCarga: TipoCargaJornada
-  horas: number // siempre calculado: cantidad directa, o diff de horaInicio/horaFin
+  horas: number // siempre calculado: cantidad directa, o diff de horaInicio/horaFin. 0 mientras enCurso.
   horaInicio?: string // 'HH:mm', solo si tipoCarga === 'rango'
-  horaFin?: string
+  horaFin?: string // ausente mientras la jornada está en curso (carga diferida)
   descripcion: string
   proyectoId?: string // opcional: jornada puede ser "suelta" o ligada a un proyecto
   tipoPago: TipoPagoJornada
   valorHora?: number // congelado al momento de la carga (vigente ese mes); solo si tipoPago === 'hora'
   montoFijo?: number // monto acordado para el trabajo; solo si tipoPago === 'trabajo'
-  montoTotal: number // horas * valorHora, o montoFijo si es por trabajo — siempre calculado y guardado
+  montoTotal: number // horas * valorHora, o montoFijo si es por trabajo — siempre calculado y guardado. 0 mientras enCurso.
   // Una jornada cargada por el propio empleado no impacta en su balance hasta que un admin la
   // valida. Las que carga o edita un admin quedan validadas de una.
   validada: boolean
+  // true entre marcar el inicio de la jornada y cargar su fin (carga diferida) — horaFin, horas y
+  // montoTotal quedan pendientes hasta finalizarla.
+  enCurso?: boolean
   createdAt: string
   updatedAt: string
 }
