@@ -78,8 +78,8 @@ export function IniciarJornadaModal({ open, onClose, onSaved, empleadoId, valida
           </Select>
         </Field>
 
-        <Field label="Descripción">
-          <Textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} required />
+        <Field label="Descripción (opcional)">
+          <Textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={3} />
         </Field>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
