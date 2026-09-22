@@ -39,11 +39,15 @@ export function estadoCronologico(p: Proyecto): EstadoCronologico {
   return 'en_desarrollo'
 }
 
-/** Todos los días 'YYYY-MM-DD' entre inicio y fin (inclusive). Sirve para expandir un rango. */
+/**
+ * Todos los días 'YYYY-MM-DD' entre inicio y fin (inclusive). Sirve para expandir un rango.
+ * Un `fin` vacío se trata como "un solo día": los formularios mandan '' (no undefined) cuando
+ * el campo quedó sin completar, y con `??` eso armaba una fecha inválida y devolvía cero días.
+ */
 export function diasEnRango(inicio?: string, fin?: string): string[] {
   if (!inicio) return []
   const [y1, m1, d1] = inicio.split('-').map(Number)
-  const [y2, m2, d2] = (fin ?? inicio).split('-').map(Number)
+  const [y2, m2, d2] = (fin || inicio).split('-').map(Number)
   const cur = new Date(y1, m1 - 1, d1)
   const end = new Date(y2, m2 - 1, d2)
   const dias: string[] = []
@@ -64,7 +68,7 @@ export function diasDeFasesArmado(fechas: {
   fechaDesarmeFin?: string
 }): string[] {
   const dias = new Set<string>()
-  diasEnRango(fechas.fechaArmadoInicio, fechas.fechaArmadoFin ?? fechas.fechaArmadoInicio).forEach((d) => dias.add(d))
+  diasEnRango(fechas.fechaArmadoInicio, fechas.fechaArmadoFin || fechas.fechaArmadoInicio).forEach((d) => dias.add(d))
   diasEnRango(fechas.fechaEventoInicio, fechas.fechaEventoFin).forEach((d) => dias.add(d))
   diasEnRango(fechas.fechaDesarmeInicio, fechas.fechaDesarmeFin).forEach((d) => dias.add(d))
   return [...dias].sort(compareDateStr)

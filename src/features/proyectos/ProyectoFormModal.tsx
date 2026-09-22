@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { Field, Input, Select, Textarea } from '../../components/ui/Input'
 import { MontoInput } from '../../components/ui/MontoInput'
 import { actualizarProyecto, crearProyecto, listarClientes, listarEmpleados, obtenerTiposServicio } from '../../lib/repo'
-import { diasDeFasesArmado } from '../../lib/proyectoEstado'
+import { diasDeFasesArmado, diasEnRango } from '../../lib/proyectoEstado'
 import { formatDate, nombreCompleto, todayStr } from '../../lib/utils'
 import type { AsignacionDia, Cliente, Empleado, EstadoComercialProyecto, Proyecto, TipoServicioConfig } from '../../types'
 
@@ -29,6 +29,7 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
   const [fechaDesarmeFin, setFechaDesarmeFin] = useState(proyecto?.fechaDesarmeFin ?? '')
   const [diasTrabajo, setDiasTrabajo] = useState<string[]>(proyecto?.diasTrabajo ?? [])
   const [nuevoDia, setNuevoDia] = useState(todayStr())
+  const [nuevoDiaHasta, setNuevoDiaHasta] = useState('')
   const [presupuesto, setPresupuesto] = useState(proyecto?.presupuesto ?? 0)
   const [notas, setNotas] = useState(proyecto?.notas ?? '')
   const [asignaciones, setAsignaciones] = useState<AsignacionDia[]>(proyecto?.asignaciones ?? [])
@@ -38,17 +39,34 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
   const [tiposServicio, setTiposServicio] = useState<TipoServicioConfig[]>([])
   const [saving, setSaving] = useState(false)
 
+  // El modal queda montado aunque esté cerrado, así que los valores iniciales de useState solo
+  // corren una vez. Sin re-sincronizar acá, al reabrirlo se ve (y se guarda) el estado viejo —
+  // pisando cambios hechos mientras tanto, como las asistencias confirmadas o las notas.
   useEffect(() => {
-    if (open) {
-      listarClientes().then(setClientes)
-      listarEmpleados().then(setEmpleados)
-      obtenerTiposServicio().then((tipos) => {
-        setTiposServicio(tipos)
-        if (!tipoServicio && tipos.length > 0) setTipoServicio(tipos[0].nombre)
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+    if (!open) return
+    listarClientes().then(setClientes)
+    listarEmpleados().then(setEmpleados)
+    obtenerTiposServicio().then((tipos) => {
+      setTiposServicio(tipos)
+      if (!proyecto?.tipoServicio && tipos.length > 0) setTipoServicio(tipos[0].nombre)
+    })
+
+    setNombre(proyecto?.nombre ?? '')
+    setUbicacion(proyecto?.ubicacion ?? '')
+    setClienteId(proyecto?.clienteId ?? '')
+    setEstadoComercial(proyecto?.estadoComercial ?? 'negociacion')
+    setTipoServicio(proyecto?.tipoServicio ?? '')
+    setFechaArmadoInicio(proyecto?.fechaArmadoInicio ?? '')
+    setFechaArmadoFin(proyecto?.fechaArmadoFin ?? proyecto?.fechaArmadoInicio ?? '')
+    setFechaEventoInicio(proyecto?.fechaEventoInicio ?? todayStr())
+    setFechaEventoFin(proyecto?.fechaEventoFin ?? '')
+    setFechaDesarmeInicio(proyecto?.fechaDesarmeInicio ?? '')
+    setFechaDesarmeFin(proyecto?.fechaDesarmeFin ?? '')
+    setDiasTrabajo(proyecto?.diasTrabajo ?? [])
+    setPresupuesto(proyecto?.presupuesto ?? 0)
+    setNotas(proyecto?.notas ?? '')
+    setAsignaciones(proyecto?.asignaciones ?? [])
+  }, [open, proyecto])
 
   const tipoSeleccionado = tiposServicio.find((t) => t.nombre === tipoServicio)
   const usaFasesArmado = tipoSeleccionado?.usaFasesArmado ?? true
@@ -60,9 +78,13 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
     return [...diasTrabajo].sort()
   }, [usaFasesArmado, fechaArmadoInicio, fechaArmadoFin, fechaEventoInicio, fechaEventoFin, fechaDesarmeInicio, fechaDesarmeFin, diasTrabajo])
 
+  // Acepta un día suelto o un rango (si se completa "hasta"), para no tener que cargar de a uno
+  // los trabajos de varios días seguidos.
   function handleAgregarDia() {
-    if (!nuevoDia || diasTrabajo.includes(nuevoDia)) return
-    setDiasTrabajo((prev) => [...prev, nuevoDia].sort())
+    if (!nuevoDia) return
+    const nuevos = diasEnRango(nuevoDia, nuevoDiaHasta || nuevoDia)
+    setDiasTrabajo((prev) => [...new Set([...prev, ...nuevos])].sort())
+    setNuevoDiaHasta('')
   }
 
   function handleQuitarDia(dia: string) {
@@ -189,12 +211,25 @@ export function ProyectoFormModal({ open, onClose, onSaved, proyecto }: Props) {
             <p className="text-xs font-medium text-[var(--text-muted)] mb-2">
               Días de trabajo (no necesariamente consecutivos)
             </p>
-            <div className="flex gap-2 mb-2">
-              <Input type="date" value={nuevoDia} onChange={(e) => setNuevoDia(e.target.value)} />
+            <div className="flex gap-2 mb-1 items-end flex-wrap">
+              <Field label="Desde">
+                <Input type="date" value={nuevoDia} onChange={(e) => setNuevoDia(e.target.value)} />
+              </Field>
+              <Field label="Hasta (opcional)">
+                <Input
+                  type="date"
+                  value={nuevoDiaHasta}
+                  min={nuevoDia || undefined}
+                  onChange={(e) => setNuevoDiaHasta(e.target.value)}
+                />
+              </Field>
               <Button type="button" variant="secondary" onClick={handleAgregarDia}>
-                + Agregar día
+                + Agregar
               </Button>
             </div>
+            <p className="text-[11px] text-[var(--text-muted)] mb-2">
+              Dejá "hasta" vacío para agregar un solo día. Después podés asignar empleados a cada día.
+            </p>
             {diasTrabajo.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)]">Todavía no agregaste ningún día.</p>
             ) : (

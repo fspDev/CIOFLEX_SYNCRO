@@ -287,7 +287,7 @@ function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?:
   function addRange(inicio?: string, fin?: string) {
     if (!inicio) return
     const [y1, m1, d1] = inicio.split('-').map(Number)
-    const [y2, m2, d2] = (fin ?? inicio).split('-').map(Number)
+    const [y2, m2, d2] = (fin || inicio).split('-').map(Number)
     const cur = new Date(y1, m1 - 1, d1)
     const end = new Date(y2, m2 - 1, d2)
     while (cur <= end) {
@@ -295,7 +295,7 @@ function diasDelProyectoInterno(p: { diasTrabajo?: string[]; fechaArmadoInicio?:
       cur.setDate(cur.getDate() + 1)
     }
   }
-  addRange(p.fechaArmadoInicio, p.fechaArmadoFin ?? p.fechaArmadoInicio)
+  addRange(p.fechaArmadoInicio, p.fechaArmadoFin || p.fechaArmadoInicio)
   addRange(p.fechaEventoInicio, p.fechaEventoFin)
   addRange(p.fechaDesarmeInicio, p.fechaDesarmeFin)
   return [...dias].sort(compareDateStr)
