@@ -5,13 +5,24 @@ import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
 import { SortToggle, type Orden } from '../../components/ui/SortToggle'
 import { Collapsible } from '../../components/ui/Collapsible'
-import { eliminarPagoProyecto, eliminarProyecto, listarClientes, listarEmpleados, listarPagosPorProyecto } from '../../lib/repo'
+import {
+  actualizarAsignacion,
+  eliminarPagoProyecto,
+  eliminarProyecto,
+  listarClientes,
+  listarEmpleados,
+  listarPagosPorProyecto,
+  quitarAsistencia,
+} from '../../lib/repo'
 import { calcularBalanceProyecto, estadoPago, ESTADO_PAGO_COLOR, ESTADO_PAGO_LABEL } from '../../lib/balance'
 import { estadoCronologico, ESTADO_CRONOLOGICO_COLOR, ESTADO_CRONOLOGICO_LABEL } from '../../lib/proyectoEstado'
 import { compareDateStr, formatCurrency, formatDate, nombreCompleto } from '../../lib/utils'
-import type { Cliente, Empleado, PagoProyecto, Proyecto } from '../../types'
+import type { AsignacionDia, Cliente, Empleado, PagoProyecto, Proyecto } from '../../types'
 import { PagoProyectoFormModal } from './PagoProyectoFormModal'
 import { ProyectoFormModal } from './ProyectoFormModal'
+import { EmpleadoDetailPanel } from '../empleados/EmpleadoDetailPanel'
+import { NotaAsignacionModal } from './NotaAsignacionModal'
+import { ConfirmarAsistenciaModal } from './ConfirmarAsistenciaModal'
 
 interface Props {
   proyecto: Proyecto
@@ -27,6 +38,9 @@ export function ProyectoDetailPanel({ proyecto, onClose, onChanged }: Props) {
   const [showEdit, setShowEdit] = useState(false)
   const [ordenPagos, setOrdenPagos] = useState<Orden>('desc')
   const [ordenAsignaciones, setOrdenAsignaciones] = useState<Orden>('asc')
+  const [empleadoAbierto, setEmpleadoAbierto] = useState<Empleado | null>(null)
+  const [notaEditando, setNotaEditando] = useState<{ fecha: string; empleadoId: string; nota: string } | null>(null)
+  const [confirmando, setConfirmando] = useState<{ asignacion: AsignacionDia; nombre: string } | null>(null)
 
   async function reload() {
     const [p, c, e] = await Promise.all([listarPagosPorProyecto(proyecto.id), listarClientes(), listarEmpleados()])
@@ -66,6 +80,23 @@ export function ProyectoDetailPanel({ proyecto, onClose, onChanged }: Props) {
     if (!confirm('¿Eliminar este cobro?')) return
     await eliminarPagoProyecto(id)
     reload()
+  }
+
+  async function handleNoAsistio(fecha: string, empleadoId: string) {
+    await actualizarAsignacion(proyecto, fecha, empleadoId, { asistio: false })
+    onChanged()
+  }
+
+  async function handleDeshacer(a: AsignacionDia) {
+    if (a.jornadaId && !confirm('Esto también elimina la jornada que se cargó al confirmar la asistencia. ¿Continuar?')) return
+    await quitarAsistencia(proyecto, a.fecha, a.empleadoId, a.jornadaId)
+    onChanged()
+  }
+
+  async function handleGuardarNota(nota: string) {
+    if (!notaEditando) return
+    await actualizarAsignacion(proyecto, notaEditando.fecha, notaEditando.empleadoId, { nota })
+    onChanged()
   }
 
   return (
@@ -195,13 +226,79 @@ export function ProyectoDetailPanel({ proyecto, onClose, onChanged }: Props) {
                       .map((a, idx) => {
                         const emp = empleados.find((e) => e.id === a.empleadoId)
                         return (
-                          <Card key={idx} className="p-3 flex items-center justify-between">
-                            <span className="text-sm">{emp ? nombreCompleto(emp.nombre, emp.apellido) : 'Empleado eliminado'}</span>
-                            {a.horaInicio && a.horaFin && (
-                              <span className="text-xs text-[var(--text-muted)]">
-                                {a.horaInicio}–{a.horaFin}
-                              </span>
-                            )}
+                          <Card key={idx} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              {emp ? (
+                                <button
+                                  onClick={() => setEmpleadoAbierto(emp)}
+                                  className="text-sm hover:text-[var(--brand-400)] hover:underline"
+                                >
+                                  {nombreCompleto(emp.nombre, emp.apellido)}
+                                </button>
+                              ) : (
+                                <span className="text-sm">Empleado eliminado</span>
+                              )}
+                              {a.horaInicio && a.horaFin && (
+                                <span className="text-xs text-[var(--text-muted)] ml-2">
+                                  {a.horaInicio}–{a.horaFin}
+                                </span>
+                              )}
+                              {a.nota && (
+                                <p className="text-xs mt-1" style={{ color: 'var(--partial)' }}>
+                                  ✎ {a.nota}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {a.asistio === true && (
+                                <span className="text-xs" style={{ color: 'var(--paid)' }}>
+                                  ✓ Asistió{a.jornadaId ? ' · jornada cargada' : ''}
+                                </span>
+                              )}
+                              {a.asistio === false && (
+                                <span className="text-xs" style={{ color: 'var(--debt)' }}>
+                                  ✕ No asistió
+                                </span>
+                              )}
+                              {/* Si ya estaba marcado como asistió pero sin jornada (marcado antes de que
+                                  existiera este flujo), se puede cargar el horario sin deshacer nada. */}
+                              {(a.asistio !== true || !a.jornadaId) && (
+                                <button
+                                  onClick={() =>
+                                    setConfirmando({
+                                      asignacion: a,
+                                      nombre: emp ? nombreCompleto(emp.nombre, emp.apellido) : 'Empleado',
+                                    })
+                                  }
+                                  className="text-xs px-2 py-1 rounded-md border-[1.5px] border-[var(--input-border)] hover:bg-[var(--surface-2)]"
+                                >
+                                  {a.asistio === true ? 'Cargar jornada' : 'Asistió'}
+                                </button>
+                              )}
+                              {a.asistio !== false && (
+                                <button
+                                  onClick={() => handleNoAsistio(dia, a.empleadoId)}
+                                  className="text-xs px-2 py-1 rounded-md border-[1.5px] border-[var(--input-border)] hover:bg-[var(--surface-2)]"
+                                >
+                                  No asistió
+                                </button>
+                              )}
+                              {a.asistio !== undefined && (
+                                <button
+                                  onClick={() => handleDeshacer(a)}
+                                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+                                >
+                                  Deshacer
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setNotaEditando({ fecha: dia, empleadoId: a.empleadoId, nota: a.nota ?? '' })}
+                                title="Cambio de último momento"
+                                className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+                              >
+                                {a.nota ? 'Editar nota' : '+ Nota'}
+                              </button>
+                            </div>
                           </Card>
                         )
                       })}
@@ -220,6 +317,23 @@ export function ProyectoDetailPanel({ proyecto, onClose, onChanged }: Props) {
         onSaved={onChanged}
         proyecto={proyecto}
       />
+      <NotaAsignacionModal
+        open={!!notaEditando}
+        onClose={() => setNotaEditando(null)}
+        onSave={handleGuardarNota}
+        notaInicial={notaEditando?.nota ?? ''}
+      />
+      <ConfirmarAsistenciaModal
+        open={!!confirmando}
+        onClose={() => setConfirmando(null)}
+        onSaved={onChanged}
+        proyecto={proyecto}
+        asignacion={confirmando?.asignacion ?? null}
+        nombreEmpleado={confirmando?.nombre ?? ''}
+      />
+      {empleadoAbierto && (
+        <EmpleadoDetailPanel empleado={empleadoAbierto} onClose={() => setEmpleadoAbierto(null)} onChanged={reload} />
+      )}
     </SlidePanel>
   )
 }

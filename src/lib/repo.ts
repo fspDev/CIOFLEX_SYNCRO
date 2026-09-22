@@ -18,6 +18,7 @@ import { compareDateStr, hoursBetween, monthStartOf, todayStr } from './utils'
 import {
   CATEGORIAS_MOVIMIENTO_DEFAULT,
   TIPOS_SERVICIO_DEFAULT,
+  type AsignacionDia,
   type Cliente,
   type Empleado,
   type Jornada,
@@ -209,6 +210,59 @@ export async function actualizarProyecto(id: string, data: Partial<Omit<Proyecto
 
 export async function eliminarProyecto(id: string) {
   await deleteDoc(doc(db, 'proyectos', id))
+}
+
+// Actualiza un campo de la asignación de un empleado en un día puntual — asistencia real o nota
+// de cambios de último momento. La asistencia es independiente de la jornada de horas/pago, que
+// puede cargarse (incluso de forma diferida) en otro momento.
+export async function actualizarAsignacion(
+  proyecto: Proyecto,
+  fecha: string,
+  empleadoId: string,
+  cambios: Partial<AsignacionDia>,
+) {
+  const asignaciones = (proyecto.asignaciones ?? []).map((a) =>
+    a.fecha === fecha && a.empleadoId === empleadoId ? { ...a, ...cambios } : a,
+  )
+  await actualizarProyecto(proyecto.id, { asignaciones })
+}
+
+// Confirma la asistencia con el rango horario realmente trabajado y genera la jornada
+// correspondiente, ya validada (la confirma un admin) y ligada al proyecto.
+export async function confirmarAsistencia(
+  proyecto: Proyecto,
+  fecha: string,
+  empleadoId: string,
+  datos: { horaInicio: string; horaFin: string; descripcion: string },
+) {
+  const tarifas = await listarTarifas(empleadoId)
+  const tarifa = tarifaVigente(tarifas, fecha)
+  if (!tarifa) throw new Error('Este empleado todavía no tiene un valor de hora asignado. Fijalo primero desde su ficha.')
+
+  const horas = hoursBetween(datos.horaInicio, datos.horaFin)
+  const jornadaId = await crearJornada({
+    empleadoId,
+    fecha,
+    tipoCarga: 'rango',
+    horas,
+    horaInicio: datos.horaInicio,
+    horaFin: datos.horaFin,
+    descripcion: datos.descripcion,
+    proyectoId: proyecto.id,
+    tipoPago: 'hora',
+    valorHora: tarifa.valorHora,
+    montoTotal: Math.round(horas * tarifa.valorHora),
+    validada: true,
+    enCurso: false,
+  })
+
+  await actualizarAsignacion(proyecto, fecha, empleadoId, { asistio: true, jornadaId })
+}
+
+/** Deshace la confirmación de asistencia y borra la jornada que se había generado, si hubo. */
+export async function quitarAsistencia(proyecto: Proyecto, fecha: string, empleadoId: string, jornadaId?: string) {
+  if (jornadaId) await eliminarJornada(jornadaId)
+  await actualizarAsignacion(proyecto, fecha, empleadoId, { asistio: undefined, jornadaId: undefined })
 }
 
 // Migración al vuelo: proyectos creados antes de que existiera tipoServicio se asumen 'Armado'

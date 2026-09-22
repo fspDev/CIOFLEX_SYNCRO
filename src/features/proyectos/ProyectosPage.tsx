@@ -37,6 +37,9 @@ export function ProyectosPage() {
     const [p, c] = await Promise.all([listarProyectos(), listarClientes()])
     setProyectos(p)
     setClientes(c)
+    // El panel de detalle recibe `selected` como prop -- si no se refresca acá, queda mostrando
+    // datos viejos (ej. asistencia recién marcada) hasta cerrar y reabrir.
+    setSelected((prev) => (prev ? (p.find((proyecto) => proyecto.id === prev.id) ?? null) : null))
     const pagosEntries = await Promise.all(p.map(async (proyecto) => [proyecto.id, await listarPagosPorProyecto(proyecto.id)] as const))
     setPagosPorProyecto(Object.fromEntries(pagosEntries))
     setLoading(false)

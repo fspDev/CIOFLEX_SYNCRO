@@ -98,6 +98,15 @@ export interface AsignacionDia {
   empleadoId: string
   horaInicio?: string
   horaFin?: string
+  // Confirmación de asistencia real el día del trabajo, independiente de si ya se cargó la
+  // jornada de horas/pago (que puede hacerse después, incluso de forma diferida).
+  // undefined = todavía sin confirmar.
+  asistio?: boolean
+  // Cambios de último momento sobre lo planificado (reemplazos, horarios corridos, etc.).
+  nota?: string
+  // Jornada generada al confirmar la asistencia con su rango horario real. Se guarda para no
+  // duplicarla si se vuelve a confirmar, y para poder borrarla si se deshace la asistencia.
+  jornadaId?: string
 }
 
 export interface Proyecto {

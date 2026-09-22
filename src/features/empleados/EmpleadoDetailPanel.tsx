@@ -10,6 +10,7 @@ import {
   eliminarJornada,
   listarJornadasPorEmpleado,
   listarPagosPorEmpleado,
+  listarProyectosPorEmpleado,
   listarTarifas,
   validarJornada,
 } from '../../lib/repo'
@@ -23,7 +24,7 @@ import {
   textoAccesoEmpleado,
   textoInfoEmpleado,
 } from '../../lib/utils'
-import type { Empleado, Jornada, PagoEmpleado, TarifaEmpleado } from '../../types'
+import type { Empleado, Jornada, PagoEmpleado, Proyecto, TarifaEmpleado } from '../../types'
 import { EmpleadoFormModal } from './EmpleadoFormModal'
 import { JornadaFormModal } from './JornadaFormModal'
 import { PagoEmpleadoFormModal } from './PagoEmpleadoFormModal'
@@ -42,6 +43,7 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [jornadas, setJornadas] = useState<Jornada[]>([])
   const [pagos, setPagos] = useState<PagoEmpleado[]>([])
   const [tarifas, setTarifas] = useState<TarifaEmpleado[]>([])
+  const [proyectos, setProyectos] = useState<Proyecto[]>([])
   const [loading, setLoading] = useState(true)
   const [showJornada, setShowJornada] = useState(false)
   const [jornadaEditando, setJornadaEditando] = useState<Jornada | null>(null)
@@ -55,17 +57,20 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const [copiadoInfo, setCopiadoInfo] = useState(false)
   const [ordenPagos, setOrdenPagos] = useState<Orden>('desc')
   const [ordenJornadas, setOrdenJornadas] = useState<Orden>('desc')
+  const [ordenAsignaciones, setOrdenAsignaciones] = useState<Orden>('desc')
 
   async function reload() {
     setLoading(true)
-    const [j, p, t] = await Promise.all([
+    const [j, p, t, pr] = await Promise.all([
       listarJornadasPorEmpleado(empleado.id),
       listarPagosPorEmpleado(empleado.id),
       listarTarifas(empleado.id),
+      listarProyectosPorEmpleado(empleado.id),
     ])
     setJornadas(j)
     setPagos(p)
     setTarifas(t)
+    setProyectos(pr)
     setLoading(false)
   }
 
@@ -83,6 +88,21 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
   const jornadasOrdenadas = [...jornadas].sort((a, b) =>
     ordenJornadas === 'asc' ? compareDateStr(a.fecha, b.fecha) : compareDateStr(b.fecha, a.fecha),
   )
+
+  // Cruce proyecto ↔ empleado: cada día en que este empleado quedó asignado a algún proyecto,
+  // con la asistencia confirmada (o no) ese día.
+  const diasAsignados = proyectos
+    .flatMap((p) =>
+      (p.asignaciones ?? [])
+        .filter((a) => a.empleadoId === empleado.id)
+        .map((a) => ({ proyecto: p, asignacion: a })),
+    )
+    .sort((x, y) =>
+      ordenAsignaciones === 'asc'
+        ? compareDateStr(x.asignacion.fecha, y.asignacion.fecha)
+        : compareDateStr(y.asignacion.fecha, x.asignacion.fecha),
+    )
+  const faltas = diasAsignados.filter((d) => d.asignacion.asistio === false).length
 
   async function handleEliminar() {
     if (!confirm(`¿Eliminar a ${nombreCompleto(empleado.nombre, empleado.apellido)}? Esta acción no se puede deshacer.`)) return
@@ -226,6 +246,53 @@ export function EmpleadoDetailPanel({ empleado, onClose, onChanged }: Props) {
               </p>
             </Card>
           </div>
+        </Collapsible>
+
+        <Collapsible
+          title={`Proyectos asignados${faltas > 0 ? ` (${faltas} falta${faltas > 1 ? 's' : ''})` : ''}`}
+          action={diasAsignados.length > 0 ? <SortToggle orden={ordenAsignaciones} onChange={setOrdenAsignaciones} label="Fecha" /> : undefined}
+        >
+          {diasAsignados.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)]">Sin días asignados en ningún proyecto.</p>
+          ) : (
+            <div className="space-y-2">
+              {diasAsignados.map(({ proyecto, asignacion }, idx) => (
+                <Card key={`${proyecto.id}-${asignacion.fecha}-${idx}`} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {formatDate(asignacion.fecha)} · {proyecto.nombre}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)] truncate">
+                      {proyecto.ubicacion}
+                      {asignacion.horaInicio && asignacion.horaFin ? ` · ${asignacion.horaInicio}–${asignacion.horaFin}` : ''}
+                    </p>
+                    {asignacion.nota && (
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--partial)' }}>
+                        ✎ {asignacion.nota}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className="text-xs shrink-0"
+                    style={{
+                      color:
+                        asignacion.asistio === true
+                          ? 'var(--paid)'
+                          : asignacion.asistio === false
+                            ? 'var(--debt)'
+                            : 'var(--text-muted)',
+                    }}
+                  >
+                    {asignacion.asistio === true
+                      ? `✓ Asistió${asignacion.jornadaId ? ' · jornada cargada' : ''}`
+                      : asignacion.asistio === false
+                        ? '✕ No asistió'
+                        : 'Sin confirmar'}
+                  </span>
+                </Card>
+              ))}
+            </div>
+          )}
         </Collapsible>
 
         <Collapsible
